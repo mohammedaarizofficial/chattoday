@@ -40,6 +40,25 @@ io.on('connection', (socket)=>{
         console.log("Received:", data);
         socket.emit("reply", "this is from the server");
     })
+
+    socket.on("join", (username)=>{
+        socket.broadcast.emit("receiveMessage",{
+            username:"System",
+            message:`${username} has joined the chat`,
+            time:new Date().toLocaleTimeString(),
+        });
+    });
+
+    socket.on("sendMessage", (data)=>{
+        console.log("Message:", data);
+
+        io.emit("receiveMessage", data);
+    })
+
+    socket.on("typing", (username)=>{
+        socket.broadcast.emit("userTyping", username);
+    })
+    
 })
 
 server.listen(PORT, ()=>{
