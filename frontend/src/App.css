@@ -1,3 +1,10 @@
+
+html, body,#root{
+    height:100%;
+    width:100%;
+    margin:0;
+}
+
 .container{
     display:grid;
     grid-template-columns: 1fr;
@@ -16,3 +23,8 @@
 .message{grid-area:message;}
 .username{grid-area:username;}
 main{grid-area:cards;}
+
+.form-control::placeholder{
+    color:grey !important;
+    opacity: 1;
+}
