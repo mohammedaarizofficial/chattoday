@@ -5,6 +5,8 @@ import connectdb from "./config/connectdb.js";
 import {Server} from 'socket.io';
 import http from 'http';
 import message from "./models/message.js";
+import userRouter from "./routes/users.routes.js";
+import users from "./models/users.js";
 
 dotenv.config();
 
@@ -22,8 +24,6 @@ const io = new Server(server, {
 
 connectdb();
 
-const availableRooms=[];
-
 io.on('connection', (socket)=>{
     console.log('A user connected:', socket.id);
 
@@ -36,18 +36,28 @@ io.on('connection', (socket)=>{
         socket.emit("reply", "this is from the server");
     })
 
-    socket.on("join", async({username,room})=>{
+    socket.on("join", async({username,password})=>{
         socket.username=username;
+
+        const userDetails = await users.findOne({username},{password:1, room:1, _id:0});
+
+        if(!userDetails){
+            socket.emit('logOut');
+            return;
+        }
+        if(userDetails.password !== password){
+            socket.emit('logOut');
+            return;
+        }
+
+        const room = userDetails.room;
         socket.room = room;
         socket.join(room);
 
         const messages = await message.find({room}).sort({createdAt:1});
 
-        if(!availableRooms.includes(room)){
-            availableRooms.push(room);
-        }
-
-        io.emit("availableRooms", availableRooms);
+        const rooms = await message.distinct("room");
+        io.emit("getRooms", rooms);
 
         socket.emit("previousMessages", messages);
 
@@ -56,7 +66,15 @@ io.on('connection', (socket)=>{
             message:`${username} has joined the chat`,
             time:new Date().toLocaleTimeString(),
         });
+
+        socket.emit('loginSuccess', room);
     });
+
+    socket.on("getRooms", async()=>{
+        const rooms = await message.distinct("room");
+
+        io.emit("getRooms", rooms);
+    })
 
     socket.on("sendMessage", async(data)=>{
         console.log("Message:", data);
@@ -70,6 +88,9 @@ io.on('connection', (socket)=>{
     })
     
 })
+
+app.use(express.json());
+app.use('/users', userRouter);
 
 server.listen(PORT, ()=>{
     console.log(`Server is running at port ${PORT}`);

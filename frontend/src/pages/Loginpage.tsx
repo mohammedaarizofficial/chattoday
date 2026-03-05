@@ -2,16 +2,16 @@ import Login from "../components/Login";
 
 interface LoginPageProps{
     username:string,
-    room:string,
+    password:string,
+    setPassword:React.Dispatch<React.SetStateAction<string>>,
     setUsername:React.Dispatch<React.SetStateAction<string>>,
-    setRoom:React.Dispatch<React.SetStateAction<string>>,
     joinChat:(e: React.FormEvent<HTMLFormElement>)=>void;
 }
 
-function Loginpage({username, room, setUsername, setRoom, joinChat}:LoginPageProps){
+function Loginpage({username, password, setPassword,setUsername, joinChat}:LoginPageProps){
     return(
         <>
-        <Login username={username} setUsername={setUsername} room={room} setRoom={setRoom} joinChat={joinChat}/>
+        <Login username={username} setUsername={setUsername} password={password} setPassword={setPassword} joinChat={joinChat}/>
         </>
     )
 }

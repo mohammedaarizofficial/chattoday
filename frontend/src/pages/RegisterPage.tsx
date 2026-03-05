@@ -1,9 +1,13 @@
 import Register from "../components/Register";
 
-function RegisterPage(){
+interface RegisterPageProps{
+    availableRooms:string[]
+}
+
+function RegisterPage({availableRooms}:RegisterPageProps){
     return(
         <>
-        <Register />
+        <Register availableRooms={availableRooms}/>
         </>
     )
 }

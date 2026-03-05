@@ -28,6 +28,7 @@ interface MessagePageProps{
 
 function MessagePage({username,room,availableRooms, typingUser, messages,bottomRef,sendMessage,message,setMessage,socket}:MessagePageProps){
     const navigate = useNavigate();
+
     
     return(
         <>
@@ -36,15 +37,15 @@ function MessagePage({username,room,availableRooms, typingUser, messages,bottomR
                 <div className="col-2 vh-100 d-flex flex-column vh-100 border-end border-secondary-subtle">
                 <div className="nav-header mt-2 text-center">Rooms</div>
                 <hr></hr>
-                {availableRooms.map((rooms)=>(
-                    <div className="nav-body">{rooms}</div>
+                {availableRooms.map((rooms,index)=>(
+                    <div key={index} className="nav-body">{rooms}</div>
                 ))}
                 <div className="mt-auto mb-2 text-center">
                     <Button variant='text' onClick={()=>navigate('/')}>Log Out</Button>
                 </div>
                 </div>
                 <div className='col-10 d-flex flex-column vh-100'>
-                <h1 className="bg-dark text-center text-light py-3 m-0">You are in room: {room}</h1>
+                <h1 className="bg-dark text-center text-light py-3 m-0">You are in room: {room||"Loading..."}</h1>
 
                     {typingUser && typingUser !== username && (
                     <div style={{ fontStyle: "italic", color: "gray" }}>

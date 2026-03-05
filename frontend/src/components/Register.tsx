@@ -1,19 +1,69 @@
 import { Button } from "@mui/material";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
-function Register(){
+interface RegisterProps{
+    availableRooms:string[]
+}
+
+
+function Register({availableRooms}:RegisterProps){
+    const [username, setUsername]=useState<string |null>('');
+    const [password, setPassword]=useState<string|null>('');
+    const [selectedRoom, setSelectedRoom]=useState<string | null>('');
+
+    const navigate = useNavigate()
+
+    const register = async(e:React.FormEvent<HTMLFormElement>)=>{
+        e.preventDefault()
+        try{
+            const data = await fetch("http://localhost:5432/users",{
+                method:"POST",
+                headers:{'Content-Type':"application/json"},
+                body:JSON.stringify({
+                    room:selectedRoom,
+                    username:username,
+                    password:password
+                })
+            })
+            const newData = await data.json();
+            console.log(newData);
+            navigate('/message');
+            setUsername('')
+            setPassword('');
+        }catch(err){
+            console.log(err);
+        }
+    }
+
     return(
         <>
         <div className='d-flex justify-content-center align-items-center' style={{maxWidth:"25%"}}>
-            <form className="mx-auto my-auto border border-secondary-subtle rounded-2 p-3">
+            <form onSubmit={register} className="mx-auto my-auto border border-secondary-subtle rounded-2 p-3">
                 <img className="mb-4" src="/docs/5.3/assets/brand/bootstrap-logo.svg" alt="" width="72" height="57" />
                 <h1 className="h3 mb-3 fw-normal text-center text-light">Register</h1>
                 <div className="form-floating">
-                    <input type="text" className="form-control mb-3 bg-dark text-light" id="floatingInput" placeholder="Username"/>
+                    <input type="text" className="form-control mb-3 bg-dark text-light" id="floatingInput" placeholder="Username"
+                    onChange={(e)=>setUsername(e.target.value)}
+                    required/>
                     <label htmlFor="floatingInput">Username</label>
                 </div>
                 <div className="form-floating">
-                    <input type="text" className="form-control mb-3 bg-dark text-light" id="floatingPassword" placeholder="Password"/>
+                    <input type="password" className="form-control mb-3 bg-dark text-light" id="floatingPassword" placeholder="Password"
+                    onChange={(e)=>setPassword(e.target.value)}
+                    required/>
                     <label htmlFor="floatingPassword">Password</label>
+                </div>
+                <div className="dropdown">
+                    <button className="btn btn-secondary dropdown-toggle mb-2" type="button" data-bs-toggle="dropdown" aria-expanded="false" style={{width:"100%"}}>
+                        {selectedRoom||'Select Room'}
+                    </button>
+                    <ul className="dropdown-menu mb-2">
+                        {availableRooms.map((room,index)=>(
+                        <li key={index}><button className="dropdown-item" 
+                        onClick={()=>setSelectedRoom(room)}>{room}</button></li>
+                        ))}
+                    </ul>
                 </div>
                 <Button type="submit" variant="contained" className="mx-auto" fullWidth>Register</Button>
             </form>

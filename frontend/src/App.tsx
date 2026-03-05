@@ -17,12 +17,9 @@ type ChatMessage = {
 
 function App() {
   const [username, setUsername]=useState<string>('');
-  // const [joined, setJoined]=useState<boolean>(false);
+  const [password, setPassword]=useState<string>('');
   const [room, setRoom]=useState<string>('');
-  // const [socket, setSocket]=useState<Socket | null>(null);
   const navigate = useNavigate();
-
-  //from the other file
   const [message, setMessage]=useState('');
     const [messages, setMessages]=useState<ChatMessage[]>([]);
     const [typingUser, setTypingUser] = useState<string | null>(null);
@@ -35,11 +32,11 @@ function App() {
 
     useEffect(()=>{
         socket.current = io('http://localhost:5432');
-        // setSocket(socket.current);
         socket.current.on('connect', ()=>{
         if(!socket.current) return;
         console.log('Connected to the server', socket.current.id);
         socket.current.emit("hello", "this is the frontend");
+        socket.current.emit('getRooms');
         })
 
         socket.current.on('receiveMessage', (data)=>{
@@ -50,8 +47,20 @@ function App() {
         setMessages(msgs);
         });
 
+        socket.current.on('getRooms',(rooms)=>{
+          setAvailableRooms(rooms);
+        })
+
         socket.current.on("availableRooms", (rooms)=>{
         setAvailableRooms(rooms);
+        })
+
+        socket.current.on('logOut', ()=>{
+          navigate('/');
+        })
+
+        socket.current.on('loginSuccess', (room)=>{
+          setRoom(room);
         })
 
         socket.current.on('disconnect', ()=>{
@@ -68,26 +77,34 @@ function App() {
         })
 
         socket.current.on("userTyping", (username:string)=>{
-        setTypingUser(username);
+          setTypingUser(username);
 
-        if(typeTimeoutRef.current){
-            clearTimeout(typeTimeoutRef.current);
+          if(typeTimeoutRef.current){
+              clearTimeout(typeTimeoutRef.current);
+          }
+
+          typeTimeoutRef.current = window.setTimeout(()=>{
+              setTypingUser(null);
+              },1500);
+          });
+
+          return ()=>{
+          if(!socket.current) return;
+          socket.current.disconnect();
         }
 
-        typeTimeoutRef.current = window.setTimeout(()=>{
-            setTypingUser(null);
-            },1500);
-        });
-
-        return ()=>{
-        if(!socket.current) return;
-        socket.current.disconnect();
-        }
+        
     },[])
 
   useEffect(()=>{
+    if(room){
+      navigate('/message');
+    }
+  },[room])
+
+  useEffect(()=>{
     bottomRef.current?.scrollIntoView({behavior:"smooth"});
-  })
+  },[messages]);
 
   const sendMessage = (e:React.FormEvent<HTMLFormElement>)=>{
     e.preventDefault();
@@ -109,19 +126,18 @@ function App() {
   const joinChat = (e:React.FormEvent<HTMLFormElement>)=>{
     e.preventDefault();
     if(!socket.current) return;
-    if(!username.trim()||!room.trim())return;
+    if(!username.trim()||!password.trim())return;
 
-    socket.current.emit("join", {username,room});
-    // setJoined(true);
-    navigate('/message');
-
+    socket.current.emit("join", {username,password});
   }
+
+
 
   return (<>
       <div className="d-flex justify-content-center align-items-center min-vh-100 bg-dark">
         <Routes>
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/" element={<Loginpage username={username} setUsername={setUsername} room={room} setRoom={setRoom} joinChat={joinChat}/>} />
+          <Route path="/register" element={<RegisterPage availableRooms={availableRooms}/>} />
+          <Route path="/" element={<Loginpage username={username} setUsername={setUsername} password={password} setPassword={setPassword} joinChat={joinChat}/>} />
           <Route path="/message" element={<MessagePage room={room} username={username} availableRooms={availableRooms} typingUser={typingUser} messages={messages} setMessage={setMessage}
           bottomRef={bottomRef} sendMessage={sendMessage} message={message} socket={socket}/>}/>
         </Routes>

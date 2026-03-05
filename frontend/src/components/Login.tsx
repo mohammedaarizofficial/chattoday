@@ -3,13 +3,13 @@ import { Link } from "react-router-dom"
 
 interface LoginProps{
     username:string,
-    room:string,
+    password:string,
+    setPassword:React.Dispatch<React.SetStateAction<string>>,
     setUsername:React.Dispatch<React.SetStateAction<string>>,
-    setRoom:React.Dispatch<React.SetStateAction<string>>,
     joinChat:(e: React.FormEvent<HTMLFormElement>)=>void;
 }
 
-function Login({username, room, setUsername, setRoom, joinChat}:LoginProps){
+function Login({username, setUsername, joinChat, password, setPassword}:LoginProps){
 
     return(
         <>
@@ -22,10 +22,10 @@ function Login({username, room, setUsername, setRoom, joinChat}:LoginProps){
                     <label htmlFor="floatingInput">Username</label>
                 </div>
                 <div className="form-floating">
-                    <input type="text" className="form-control mb-3 bg-dark text-light" id="floatingPassword" placeholder="Room" value={room} onChange={(e)=>setRoom(e.target.value)}/>
-                    <label htmlFor="floatingPassword">Room</label>
+                    <input type="password" className="form-control mb-3 bg-dark text-light" id="floatingPassword" placeholder="Password" value={password} onChange={(e)=>setPassword(e.target.value)}/>
+                    <label htmlFor="floatingPassword">Password</label>
                 </div>
-                <Link to="/register" className="text-decoration-none">
+                <Link to="/register" className="text-decoration-none mb-2">
                 Register
                 </Link>
                 <Button type="submit" variant="contained" className="mx-auto" fullWidth>Login</Button>
