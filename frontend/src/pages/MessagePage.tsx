@@ -23,13 +23,15 @@ interface MessagePageProps{
     sendMessage:(e: React.FormEvent<HTMLFormElement>)=>void,
     message:string,
     socket:RefObject<Socket<DefaultEventsMap, DefaultEventsMap> | null>,
+    setLogOut:React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 
-function MessagePage({username,room,availableRooms, typingUser, messages,bottomRef,sendMessage,message,setMessage,socket}:MessagePageProps){
-    const navigate = useNavigate();
+function MessagePage({username,room,availableRooms, typingUser, messages,bottomRef,sendMessage,message,setMessage,socket,setLogOut}:MessagePageProps){
 
-    
+    const LogOut = ()=>{
+        setLogOut(true);
+    }
     return(
         <>
         <div className="container-fluid vh-100 bg-dark text-light" style={{height:"100%"}}>
@@ -41,7 +43,7 @@ function MessagePage({username,room,availableRooms, typingUser, messages,bottomR
                     <div key={index} className="nav-body">{rooms}</div>
                 ))}
                 <div className="mt-auto mb-2 text-center">
-                    <Button variant='text' onClick={()=>navigate('/')}>Log Out</Button>
+                    <Button variant='text' onClick={LogOut}>Log Out</Button>
                 </div>
                 </div>
                 <div className='col-10 d-flex flex-column vh-100'>

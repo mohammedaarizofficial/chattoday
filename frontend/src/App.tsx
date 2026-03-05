@@ -22,6 +22,7 @@ function App() {
   const [room, setRoom]=useState<string>('');
   const navigate = useNavigate();
   const [message, setMessage]=useState('');
+  const [logOut, setLogOut]=useState<boolean>(false);
     const [messages, setMessages]=useState<ChatMessage[]>([]);
     const [typingUser, setTypingUser] = useState<string | null>(null);
     const typeTimeoutRef = useRef<number | null>(null);
@@ -81,6 +82,11 @@ function App() {
       navigate('/message');
     }
   },[room])
+
+  if(logOut){
+    localStorage.removeItem('token');
+    navigate('/');
+  }
 
   useEffect(()=>{
     bottomRef.current?.scrollIntoView({behavior:"smooth"});
@@ -165,7 +171,9 @@ function App() {
               bottomRef={bottomRef} 
               sendMessage={sendMessage} 
               message={message} 
-              socket={socket}/>
+              socket={socket}
+              setLogOut={setLogOut}
+              />
           </ProtectedRoute>
           }/>
         </Routes>
