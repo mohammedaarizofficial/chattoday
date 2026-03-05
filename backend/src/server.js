@@ -7,6 +7,7 @@ import http from 'http';
 import message from "./models/message.js";
 import userRouter from "./routes/users.routes.js";
 import users from "./models/users.js";
+import jwt from 'jsonwebtoken';
 
 dotenv.config();
 
@@ -24,51 +25,49 @@ const io = new Server(server, {
 
 connectdb();
 
-io.on('connection', (socket)=>{
-    console.log('A user connected:', socket.id);
+io.use((socket,next)=>{
+    const token = socket.handshake.auth.token;
+
+    if(!token) return next(new Error("Authentication error"));
+
+    try{
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        console.log("DECODED TOKEN:", decoded);
+
+        socket.username = decoded.username;
+        socket.room = decoded.room;
+
+        next();
+    }catch(err){
+        next(new Error("Authentication error"));
+    }
+})
+
+io.on('connection', async(socket)=>{
+
+    const room = socket.room;
+
+    socket.join(room);
 
     socket.on('disconnect', ()=>{
         console.log('User disconnected', socket.id);
     })
 
-    socket.on("hello", (data)=>{
-        console.log("Received:", data);
-        socket.emit("reply", "this is from the server");
-    })
 
-    socket.on("join", async({username,password})=>{
-        socket.username=username;
+    const messages = await message.find({room}).sort({createdAt:1});
 
-        const userDetails = await users.findOne({username},{password:1, room:1, _id:0});
+    const rooms = await message.distinct("room");
 
-        if(!userDetails){
-            socket.emit('logOut');
-            return;
-        }
-        if(userDetails.password !== password){
-            socket.emit('logOut');
-            return;
-        }
+    io.emit("getRooms", rooms);
 
-        const room = userDetails.room;
-        socket.room = room;
-        socket.join(room);
+    socket.emit("previousMessages", messages);
 
-        const messages = await message.find({room}).sort({createdAt:1});
-
-        const rooms = await message.distinct("room");
-        io.emit("getRooms", rooms);
-
-        socket.emit("previousMessages", messages);
-
-        socket.broadcast.to(room).emit("receiveMessage",{
-            username:"System",
-            message:`${username} has joined the chat`,
-            time:new Date().toLocaleTimeString(),
-        });
-
-        socket.emit('loginSuccess', room);
+    socket.broadcast.to(room).emit("receiveMessage",{
+        username:"System",
+        message:`${socket.username} has joined the chat`,
+        time:new Date().toLocaleTimeString(),
     });
+
 
     socket.on("getRooms", async()=>{
         const rooms = await message.distinct("room");
@@ -77,8 +76,14 @@ io.on('connection', (socket)=>{
     })
 
     socket.on("sendMessage", async(data)=>{
+        const msgData = {
+        username: socket.username,
+        room: socket.room,
+        message: data.message,
+        time: data.time
+    };
         console.log("Message:", data);
-        const newMessage = await message.create(data);
+        const newMessage = await message.create(msgData);
 
         io.to(socket.room).emit("receiveMessage", newMessage);
     })

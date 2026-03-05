@@ -1,4 +1,6 @@
+import users from "../models/users.js";
 import Users from "../models/users.js";
+import jwt from 'jsonwebtoken'
 
 export const createUser = async(req, res)=>{  
     try{
@@ -16,4 +18,25 @@ export const createUser = async(req, res)=>{
     }catch(err){
         console.log(err);
     }
+}
+
+export const loginUser = async(req, res)=>{
+    const {username, password} = req.body;
+
+    const user = await users.findOne({username});
+
+    if(!user || user.password !== password){
+        res.status(401).json({message:'Invalid credentials'});
+    }
+
+    const token = jwt.sign(
+        {
+            username:user.username,
+            room:user.room
+        },
+        process.env.JWT_SECRET,
+        {expiresIn:'1h'}
+    );
+
+    res.json({token});
 }

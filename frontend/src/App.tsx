@@ -7,6 +7,7 @@ import {io} from 'socket.io-client';
 import RegisterPage from './pages/RegisterPage';
 import MessagePage from './pages/MessagePage';
 import { useNavigate } from 'react-router-dom';
+import ProtectedRoute from './components/ProtectedRoute';
 
 type ChatMessage = {
   room:string,
@@ -31,70 +32,49 @@ function App() {
 
 
     useEffect(()=>{
-        socket.current = io('http://localhost:5432');
-        socket.current.on('connect', ()=>{
-        if(!socket.current) return;
-        console.log('Connected to the server', socket.current.id);
-        socket.current.emit("hello", "this is the frontend");
-        socket.current.emit('getRooms');
-        })
+  if(!socket.current) return;
 
-        socket.current.on('receiveMessage', (data)=>{
-        setMessages((prev)=>[...prev,data]);
-        })
+  socket.current.on('receiveMessage',(data)=>{
+    setMessages((prev)=>[...prev,data]);
+  });
 
-        socket.current.on("previousMessages", (msgs) => {
-        setMessages(msgs);
-        });
+  socket.current.on("previousMessages",(msgs)=>{
+    setMessages(msgs);
+  });
 
-        socket.current.on('getRooms',(rooms)=>{
-          setAvailableRooms(rooms);
-        })
+  socket.current.on("getRooms",(rooms)=>{
+    setAvailableRooms(rooms);
+  });
 
-        socket.current.on("availableRooms", (rooms)=>{
-        setAvailableRooms(rooms);
-        })
+  socket.current.on("availableRooms",(rooms)=>{
+    setAvailableRooms(rooms);
+  });
 
-        socket.current.on('logOut', ()=>{
-          navigate('/');
-        })
+  socket.current.on("userTyping",(username:string)=>{
+    setTypingUser(username);
 
-        socket.current.on('loginSuccess', (room)=>{
-          setRoom(room);
-        })
+    if(typeTimeoutRef.current){
+      clearTimeout(typeTimeoutRef.current);
+    }
 
-        socket.current.on('disconnect', ()=>{
-        if(!socket.current) return;
-        console.log('Disconnected from the server', socket.current.id);
-        })
+    typeTimeoutRef.current = window.setTimeout(()=>{
+      setTypingUser(null);
+    },1500);
+  });
 
-        socket.current.on("connect_error", (err) => {
-        console.log("❌ Connection error:", err.message)
-        })
+  socket.current.on("connect_error",(err)=>{
+    console.log("❌ Connection error:", err.message);
+  });
 
-        socket.current.on('reply', (data)=>{
-        console.log("Received from server:", data);
-        })
+  return ()=>{
+    socket.current?.off("receiveMessage");
+    socket.current?.off("previousMessages");
+    socket.current?.off("getRooms");
+    socket.current?.off("availableRooms");
+    socket.current?.off("userTyping");
+  };
 
-        socket.current.on("userTyping", (username:string)=>{
-          setTypingUser(username);
-
-          if(typeTimeoutRef.current){
-              clearTimeout(typeTimeoutRef.current);
-          }
-
-          typeTimeoutRef.current = window.setTimeout(()=>{
-              setTypingUser(null);
-              },1500);
-          });
-
-          return ()=>{
-          if(!socket.current) return;
-          socket.current.disconnect();
-        }
-
-        
-    },[])
+},[socket.current]);
 
   useEffect(()=>{
     if(room){
@@ -112,8 +92,8 @@ function App() {
     if(!message.trim()||!username.trim()) return
 
     const msgData={
+      username,
       room,
-      username, 
       message, 
       time:new Date().toLocaleTimeString(),
     }
@@ -123,14 +103,49 @@ function App() {
   }
 
 
-  const joinChat = (e:React.FormEvent<HTMLFormElement>)=>{
+  const joinChat = async(e:React.FormEvent<HTMLFormElement>)=>{
     e.preventDefault();
-    if(!socket.current) return;
-    if(!username.trim()||!password.trim())return;
 
-    socket.current.emit("join", {username,password});
+    const res = await fetch("http://localhost:5432/users/login",{
+      method:"POST",
+      headers:{'Content-type':'application/json'},
+      body:JSON.stringify({username,password})
+    })
+    const data = await res.json();
+    console.log("TOKEN:", data.token);
+
+    localStorage.setItem('token', data.token);
+
+
+      // create socket AFTER login
+    socket.current = io("http://localhost:5432",{
+      auth:{ token:data.token }
+    });
+
+    socket.current.on("connect",()=>{
+      console.log("Connected:",socket.current?.id);
+      socket.current?.emit("getRooms");
+    });
+
+    setPassword('');
+    navigate('/message');
   }
 
+  useEffect(()=>{
+  const token = localStorage.getItem("token");
+
+  if(!token) return;
+
+  socket.current = io("http://localhost:5432",{
+    auth:{token}
+  });
+
+  socket.current.on("connect",()=>{
+    console.log("Reconnected with token");
+    socket.current?.emit("getRooms");
+  });
+
+},[]);
 
 
   return (<>
@@ -138,8 +153,21 @@ function App() {
         <Routes>
           <Route path="/register" element={<RegisterPage availableRooms={availableRooms}/>} />
           <Route path="/" element={<Loginpage username={username} setUsername={setUsername} password={password} setPassword={setPassword} joinChat={joinChat}/>} />
-          <Route path="/message" element={<MessagePage room={room} username={username} availableRooms={availableRooms} typingUser={typingUser} messages={messages} setMessage={setMessage}
-          bottomRef={bottomRef} sendMessage={sendMessage} message={message} socket={socket}/>}/>
+          <Route path="/message" element={
+            <ProtectedRoute>
+              <MessagePage 
+              room={room} 
+              username={username} 
+              availableRooms={availableRooms} 
+              typingUser={typingUser} 
+              messages={messages} 
+              setMessage={setMessage}
+              bottomRef={bottomRef} 
+              sendMessage={sendMessage} 
+              message={message} 
+              socket={socket}/>
+          </ProtectedRoute>
+          }/>
         </Routes>
       </div>
       </>
