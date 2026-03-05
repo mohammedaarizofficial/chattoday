@@ -6,7 +6,7 @@ interface LoginProps{
     room:string,
     setUsername:React.Dispatch<React.SetStateAction<string>>,
     setRoom:React.Dispatch<React.SetStateAction<string>>,
-    joinChat:(e:React.HTML)=>void;
+    joinChat:(e: React.FormEvent<HTMLFormElement>)=>void;
 }
 
 function Login({username, room, setUsername, setRoom, joinChat}:LoginProps){
@@ -25,8 +25,8 @@ function Login({username, room, setUsername, setRoom, joinChat}:LoginProps){
                     <input type="text" className="form-control mb-3 bg-dark text-light" id="floatingPassword" placeholder="Room" value={room} onChange={(e)=>setRoom(e.target.value)}/>
                     <label htmlFor="floatingPassword">Room</label>
                 </div>
-                <Link to="/register">
-                <a href="">Register</a>
+                <Link to="/register" className="text-decoration-none">
+                Register
                 </Link>
                 <Button type="submit" variant="contained" className="mx-auto" fullWidth>Login</Button>
             </form>

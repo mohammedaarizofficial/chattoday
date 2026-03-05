@@ -1,14 +1,9 @@
-import { useState, useEffect, useRef} from 'react'
-import {io} from 'socket.io-client';
-import type { Socket } from 'socket.io-client';
 import Button from '@mui/material/Button';
 import { useNavigate } from 'react-router-dom';
+import type { Socket } from 'socket.io-client';
+import type { RefObject } from 'react';
+import  type {DefaultEventsMap}  from "socket.io";
 
-interface MessagePageProps{
-    username:string,
-    room:string,
-    setSocket:React.Dispatch<React.SetStateAction<Socket|null>>
-}
 
 type ChatMessage = {
   room:string,
@@ -17,90 +12,23 @@ type ChatMessage = {
   time:string
 }
 
-function MessagePage({username,room,setSocket}:MessagePageProps){
-    const [message, setMessage]=useState('');
-    const [messages, setMessages]=useState<ChatMessage[]>([]);
-    const [typingUser, setTypingUser] = useState<string | null>(null);
-    const typeTimeoutRef = useRef<number | null>(null);
-    const [availableRooms, setAvailableRooms]=useState<string[]>([]);
+interface MessagePageProps{
+    username:string,
+    room:string,
+    availableRooms:string[],
+    setMessage:React.Dispatch<React.SetStateAction<string>>,
+    typingUser:string|null,
+    messages:ChatMessage[],
+    bottomRef:RefObject<HTMLDivElement | null>,
+    sendMessage:(e: React.FormEvent<HTMLFormElement>)=>void,
+    message:string,
+    socket:RefObject<Socket<DefaultEventsMap, DefaultEventsMap> | null>,
+}
 
-    const socket = useRef<Socket | null>(null);
-    const bottomRef = useRef<HTMLDivElement | null>(null);
 
+function MessagePage({username,room,availableRooms, typingUser, messages,bottomRef,sendMessage,message,setMessage,socket}:MessagePageProps){
     const navigate = useNavigate();
-
-    useEffect(()=>{
-        socket.current = io('http://localhost:5432');
-        setSocket(socket.current);
-        socket.current.on('connect', ()=>{
-        if(!socket.current) return;
-        console.log('Connected to the server', socket.current.id);
-        socket.current.emit("hello", "this is the frontend");
-        })
-
-        socket.current.on('receiveMessage', (data)=>{
-        setMessages((prev)=>[...prev,data]);
-        })
-
-        socket.current.on("previousMessages", (msgs) => {
-        setMessages(msgs);
-        });
-
-        socket.current.on("availableRooms", (rooms)=>{
-        setAvailableRooms(rooms);
-        })
-
-        socket.current.on('disconnect', ()=>{
-        if(!socket.current) return;
-        console.log('Disconnected from the server', socket.current.id);
-        })
-
-        socket.current.on("connect_error", (err) => {
-        console.log("❌ Connection error:", err.message)
-        })
-
-        socket.current.on('reply', (data)=>{
-        console.log("Received from server:", data);
-        })
-
-        socket.current.on("userTyping", (username:string)=>{
-        setTypingUser(username);
-
-        if(typeTimeoutRef.current){
-            clearTimeout(typeTimeoutRef.current);
-        }
-
-        typeTimeoutRef.current = window.setTimeout(()=>{
-            setTypingUser(null);
-            },1500);
-        });
-
-        return ()=>{
-        if(!socket.current) return;
-        socket.current.disconnect();
-        }
-    },[])
-
-  useEffect(()=>{
-    bottomRef.current?.scrollIntoView({behavior:"smooth"});
-  })
-
-  const sendMessage = (e:React.FormEvent<HTMLFormElement>)=>{
-    e.preventDefault();
-    if(!socket.current) return;
-    if(!message.trim()||!username.trim()) return
-
-    const msgData={
-      room,
-      username, 
-      message, 
-      time:new Date().toLocaleTimeString(),
-    }
-
-    socket.current.emit("sendMessage", msgData);
-    setMessage('');
-  }
-
+    
     return(
         <>
         <div className="container-fluid vh-100 bg-dark text-light" style={{height:"100%"}}>

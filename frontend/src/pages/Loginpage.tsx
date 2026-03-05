@@ -5,7 +5,7 @@ interface LoginPageProps{
     room:string,
     setUsername:React.Dispatch<React.SetStateAction<string>>,
     setRoom:React.Dispatch<React.SetStateAction<string>>,
-    joinChat:()=>void;
+    joinChat:(e: React.FormEvent<HTMLFormElement>)=>void;
 }
 
 function Loginpage({username, room, setUsername, setRoom, joinChat}:LoginPageProps){
