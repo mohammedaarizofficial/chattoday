@@ -68,9 +68,13 @@ io.on('connection', async(socket)=>{
 
     const messages = await message.find({room}).sort({createdAt:1});
 
-    const rooms = await message.distinct("room");
+    const allRooms = await message.distinct("room");
 
-    io.emit("getRooms", rooms);
+    const userRooms = allRooms.filter(room =>
+    room.includes(socket.username)
+    );
+
+    socket.emit("conversationsList", userRooms);
 
     socket.emit("previousMessages", messages);
 
@@ -82,9 +86,13 @@ io.on('connection', async(socket)=>{
 
 
     socket.on("getRooms", async()=>{
-        const rooms = await message.distinct("room");
+       const allRooms = await message.distinct("room");
 
-        io.emit("getRooms", rooms);
+        const userRooms = allRooms.filter(room =>
+        room.includes(socket.username)
+        );
+
+        socket.emit("conversationsList", userRooms);
     })
 
     socket.on("getUsers", async()=>{

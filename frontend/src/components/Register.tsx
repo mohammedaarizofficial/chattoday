@@ -6,10 +6,9 @@ interface RegisterProps{
     createSocket:(token:string)=>void
 }
 
-function Register({availableRooms,createSocket}:RegisterProps){
+function Register({createSocket}:RegisterProps){
     const [username, setUsername]=useState<string |null>('');
     const [password, setPassword]=useState<string|null>('');
-    const [selectedRoom, setSelectedRoom]=useState<string | null>('');
 
     const navigate = useNavigate()
 
@@ -20,7 +19,6 @@ function Register({availableRooms,createSocket}:RegisterProps){
                 method:"POST",
                 headers:{'Content-Type':"application/json"},
                 body:JSON.stringify({
-                    room:selectedRoom,
                     username:username,
                     password:password
                 })
@@ -55,17 +53,6 @@ function Register({availableRooms,createSocket}:RegisterProps){
                     onChange={(e)=>setPassword(e.target.value)}
                     required/>
                     <label htmlFor="floatingPassword">Password</label>
-                </div>
-                <div className="dropdown">
-                    <button className="btn btn-secondary dropdown-toggle mb-2" type="button" data-bs-toggle="dropdown" aria-expanded="false" style={{width:"100%"}}>
-                        {selectedRoom||'Select Room'}
-                    </button>
-                    <ul className="dropdown-menu mb-2">
-                        {availableRooms.map((room,index)=>(
-                        <li key={index}><button className="dropdown-item" 
-                        onClick={()=>setSelectedRoom(room)}>{room}</button></li>
-                        ))}
-                    </ul>
                 </div>
                 <Button type="submit" variant="contained" className="mx-auto" fullWidth>Register</Button>
             </form>

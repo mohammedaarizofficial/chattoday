@@ -3,7 +3,7 @@ import { useState,useEffect } from 'react';
 import type { Socket } from 'socket.io-client';
 import type { RefObject } from 'react';
 import  type {DefaultEventsMap}  from "socket.io";
-import { Message,MainContainer,MessageList,ChatContainer,MessageInput} from '@chatscope/chat-ui-kit-react';
+import { Message,MainContainer,MessageList,ChatContainer,MessageInput,ConversationHeader,Avatar,VoiceCallButton,VideoCallButton,InfoButton} from '@chatscope/chat-ui-kit-react';
 import "@chatscope/chat-ui-kit-styles/dist/default/styles.min.css";
 import SidebarComponent from '../components/SidebarComponent';
 import AddUser from '../components/AddUser';
@@ -40,8 +40,6 @@ function MessagePage({username,selectedRoom,availableRooms, setMessage,typingUse
         setLogOut(true);
     }
 
-    const typingIndicator = typingUser+" is typing...";
-
     const getOtherUser = (room:string, username:string)=>{
         if(!room) return room;
         if(!username) return room;
@@ -52,6 +50,7 @@ function MessagePage({username,selectedRoom,availableRooms, setMessage,typingUse
     }
 
     const chatTitle = selectedRoom ? (getOtherUser(selectedRoom, username) || selectedRoom) : "Select a conversation";
+    const typingIndicator =chatTitle+" is typing...";
 
     useEffect(()=>{
         if(!modal) return;
@@ -62,8 +61,8 @@ function MessagePage({username,selectedRoom,availableRooms, setMessage,typingUse
 
     return(
         <>
-        <div className="container-fluid vh-100 bg-dark text-light" style={{height:"100%"}}>
-            <div className="row">
+        <div className="container-fluid vh-100 bg-dark text-light vw-100 p-0" style={{height:"100%"}}>
+            <div className="row g-0">
                 <div className="col-2 vh-100 d-flex flex-column vh-100 border-end border-secondary-subtle">
                     <SidebarComponent 
                     setModal={setModal}
@@ -73,23 +72,35 @@ function MessagePage({username,selectedRoom,availableRooms, setMessage,typingUse
                     setSelectedRoom={setSelectedRoom}
                     socket={socket}
                     />
-                <div className="mt-auto mb-2 text-center">
-                    <Button variant='text' onClick={LogOut}>Log Out</Button>
+                <div className="mt-auto text-center" style={{backgroundColor:"white"}}>
+                    <Button className="mb-2" variant='text' onClick={LogOut}>Log Out</Button>
                 </div>
                 </div>
-                <div className='col-10 d-flex flex-column vh-100'>
-                <h1 className="bg-dark text-center text-light py-3 m-0">You are in room: {chatTitle}</h1>
-
+                <div className='col-10 d-flex flex-column vh-100 '>
                     {typingUser && typingUser !== username && (
                     <div style={{ fontStyle: "italic", color: "gray" }}>
                         {typingIndicator} is typing...
                     </div>
                     )}
-                    <main className="flex-grow-1 overflow-auto px-3">
+                    <main className="flex-grow-1 overflow-auto">
                     {selectedRoom ? (
                     <MainContainer>
                         <ChatContainer>
-                        <MessageList>
+                        <ConversationHeader>
+                            <Avatar
+                                name={chatTitle??"unknown"}
+                                src="https://chatscope.io/storybook/react/assets/emily-xzL8sDL2.svg"
+                            />
+                            <ConversationHeader.Content
+                                userName={chatTitle}
+                            />
+                            <ConversationHeader.Actions>
+                                <VoiceCallButton title="Start voice call" />
+                                <VideoCallButton title="Start video call" />
+                                <InfoButton title="Show info" />
+                            </ConversationHeader.Actions>
+                        </ConversationHeader>
+                        <MessageList >
                             {messages.map((msg,index)=>(
                             <Message
                                 key={index}

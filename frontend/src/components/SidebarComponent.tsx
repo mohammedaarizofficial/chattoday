@@ -14,7 +14,7 @@ interface SidebarProps{
 
 function SidebarComponent({setModal, rooms, username, setRoom, setSelectedRoom,socket}:SidebarProps){
 
-  const getOtherUser = (room:string, username:string)=>{
+  const   getOtherUser = (room:string, username:string)=>{
     if(!room) return room;
     if(!username) return room;
     if(!room.includes("_")) return room;
@@ -40,7 +40,11 @@ function SidebarComponent({setModal, rooms, username, setRoom, setSelectedRoom,s
       </div>
 
       <ConversationList>
-        {rooms.map((room,index)=>{
+        {rooms.length === 0 ? (
+        <div className="d-flex text-center ms-1">
+          No Messages yet...
+        </div>):(
+          rooms.map((room,index)=>{
           const otherUser = getOtherUser(room, username);
           if(otherUser === null) return null;
 
@@ -53,7 +57,10 @@ function SidebarComponent({setModal, rooms, username, setRoom, setSelectedRoom,s
               <Avatar name={otherUser} />
             </Conversation>
           );
-        })}
+        })
+        )
+        }
+        
       </ConversationList>
 
     </Sidebar>
