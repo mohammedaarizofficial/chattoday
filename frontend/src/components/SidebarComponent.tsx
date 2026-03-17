@@ -15,8 +15,13 @@ interface SidebarProps{
 function SidebarComponent({setModal, rooms, username, setRoom, setSelectedRoom,socket}:SidebarProps){
 
   const getOtherUser = (room:string, username:string)=>{
+    if(!room) return room;
     if(!username) return room;
-    return room.split("_").find(user => user !== username);
+    if(!room.includes("_")) return room;
+    const parts = room.split("_");
+    // Only treat it as a private chat if the current user is actually part of it
+    if(!parts.includes(username)) return null;
+    return parts.find(user => user !== username) || room;
   }
 
   const handleSelectRoom = (room:string)=>{
@@ -37,6 +42,7 @@ function SidebarComponent({setModal, rooms, username, setRoom, setSelectedRoom,s
       <ConversationList>
         {rooms.map((room,index)=>{
           const otherUser = getOtherUser(room, username);
+          if(otherUser === null) return null;
 
           return (
             <Conversation

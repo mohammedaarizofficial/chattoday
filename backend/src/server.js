@@ -11,6 +11,14 @@ import jwt from 'jsonwebtoken';
 
 dotenv.config();
 
+const normalizeRoomName = (room)=>{
+    if(typeof room !== "string") return room;
+    if(!room.includes("_")) return room;
+    const parts = room.split("_").filter(Boolean);
+    if(parts.length !== 2) return room;
+    return parts.sort().join("_");
+}
+
 const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT;
@@ -86,6 +94,8 @@ io.on('connection', async(socket)=>{
     })
 
     socket.on("sendMessage", async(data)=>{
+        // Always normalize private room names so we don't create both "a_b" and "b_a"
+        socket.room = normalizeRoomName(socket.room);
         const msgData = {
             username: socket.username,
             room: socket.room,
@@ -114,7 +124,7 @@ io.on('connection', async(socket)=>{
 
     socket.on("startPrivateChat", ({to})=>{
         const from = socket.username;
-        const room = [from, to].sort().join("_");
+        const room = normalizeRoomName([from, to].join("_"));
 
         socket.join(room);
         socket.room = room;
@@ -129,10 +139,11 @@ io.on('connection', async(socket)=>{
     });
 
     socket.on("joinRoom", async(room)=>{
-        socket.join(room);
-        socket.room = room;
+        const normalized = normalizeRoomName(room);
+        socket.join(normalized);
+        socket.room = normalized;
 
-        const messages = await message.find({room}).sort({createdAt:1});
+        const messages = await message.find({room: normalized}).sort({createdAt:1});
         socket.emit("previousMessages", messages);
     });
     

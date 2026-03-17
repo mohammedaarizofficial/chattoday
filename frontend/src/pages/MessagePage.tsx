@@ -46,7 +46,9 @@ function MessagePage({username,selectedRoom,availableRooms, setMessage,typingUse
         if(!room) return room;
         if(!username) return room;
         if(!room.includes("_")) return room;
-        return room.split("_").find(user => user !== username) || room;
+        const parts = room.split("_");
+        if(!parts.includes(username)) return room;
+        return parts.find(user => user !== username) || room;
     }
 
     const chatTitle = selectedRoom ? (getOtherUser(selectedRoom, username) || selectedRoom) : "Select a conversation";

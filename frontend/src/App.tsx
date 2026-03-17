@@ -204,6 +204,7 @@ function App() {
 
     socket.current.on("chatStarted", (data)=>{
       setRoom(data.room);
+      setSelectedRoom(data.room);
       setMessages([]);
     })
 
