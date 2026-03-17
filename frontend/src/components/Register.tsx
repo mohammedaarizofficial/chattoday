@@ -1,13 +1,12 @@
 import { Button } from "@mui/material";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-
 interface RegisterProps{
-    availableRooms:string[]
+    availableRooms:string[],
+    createSocket:(token:string)=>void
 }
 
-
-function Register({availableRooms}:RegisterProps){
+function Register({availableRooms,createSocket}:RegisterProps){
     const [username, setUsername]=useState<string |null>('');
     const [password, setPassword]=useState<string|null>('');
     const [selectedRoom, setSelectedRoom]=useState<string | null>('');
@@ -28,6 +27,9 @@ function Register({availableRooms}:RegisterProps){
             })
             const newData = await data.json();
             console.log(newData);
+            localStorage.setItem('token',newData.token);
+            createSocket(newData.token)
+            
             navigate('/message');
             setUsername('')
             setPassword('');

@@ -38,5 +38,11 @@ export const loginUser = async(req, res)=>{
         {expiresIn:'1h'}
     );
 
-    res.json({token});
+    const msgData = {
+        token:token,
+        room:user.room,
+        username:user.username
+    }
+
+    res.json(msgData);
 }
