@@ -1,54 +1,92 @@
-import { Button } from "@mui/material"
-import type { RefObject } from "react"
-import { Socket } from "socket.io-client"
-import type { DefaultEventsMap } from "socket.io"
+import { Button } from "@mui/material";
+import type { RefObject } from "react";
+import { Socket } from "socket.io-client";
+import type { DefaultEventsMap } from "socket.io";
 
 interface AddUserProps{
+    username:string,
     usersList:string[],
-    setAddUser:React.Dispatch<React.SetStateAction<string>>,
-    addUser:string,
-    setModal:React.Dispatch<React.SetStateAction<boolean>>
+    addUsers:string[],
+    setAddUsers:React.Dispatch<React.SetStateAction<string[]>>,
+    setModal:React.Dispatch<React.SetStateAction<boolean>>,
     socket:RefObject<Socket<DefaultEventsMap, DefaultEventsMap> | null>,
 }
 
-function AddUser({usersList,setAddUser,addUser,setModal,socket}:AddUserProps){
+function AddUser({username,usersList, addUsers, setAddUsers, setModal, socket}:AddUserProps){
+
+    const handleToggleUser = (user:string)=>{
+        setAddUsers(prev=>{
+            if(prev.includes(user)){
+                // remove user
+                return prev.filter(u => u !== user);
+            } else {
+                // add user
+                return [...prev, user];
+            }
+        });
+    };
 
     const handleSubmit=(e:React.FormEvent<HTMLFormElement>)=>{
         e.preventDefault();
 
-        if(!addUser||!socket.current){
+        if(addUsers.length === 0 || !socket.current){
             return;
         }
-        console.log("Selected User:", addUser);
 
-        socket.current.emit("startPrivateChat",{
-            to:addUser
-        })
+        console.log("Selected Users:", addUsers);
+
+        socket.current.emit("startGroupChat",{
+            users:addUsers
+        });
 
         setModal(false);
-    }
+        setAddUsers([]); // reset after submit
+    };
+
     return(
         <div className='d-flex justify-content-center align-items-center w-100'>
-            <form  onSubmit={handleSubmit} className="w-100 my-auto border border-secondary-subtle rounded-2 p-3">
-                <img className="mb-4" src="/docs/5.3/assets/brand/bootstrap-logo.svg" alt="" width="72" height="57" />
-                <h1 className="h3 mb-3 fw-normal text-center text-dark">New message</h1>
+            <form onSubmit={handleSubmit} className="w-100 border border-secondary-subtle rounded-2 p-3">
+
+                <h1 className="h5 mb-3 text-center">Create Group</h1>
+
                 <div className="dropdown">
-                    <button className="btn btn-secondary dropdown-toggle mb-2" type="button" data-bs-toggle="dropdown" aria-expanded="false" style={{width:"100%"}}>
-                        {addUser||'Select User'}
+                    <button 
+                        className="btn btn-secondary dropdown-toggle mb-2 w-100" 
+                        type="button" 
+                        data-bs-toggle="dropdown"
+                    >
+                        {addUsers.length > 0 
+                          ? `${addUsers.length} selected` 
+                          : 'Select Users'}
                     </button>
-                    <ul className="dropdown-menu mb-2">
-                        {usersList.map((user,index)=>(
-                        <li key={index}>
-                            <button type="button" className="dropdown-item" 
-                        onClick={()=>setAddUser(user)}>{user}</button>
-                        </li>
+
+                    <ul className="dropdown-menu w-100">
+                        {usersList.filter(u=>u!==username).map((user,index)=>(
+                            <li key={index} className="px-3 py-1">
+
+                                <input
+                                    type="checkbox"
+                                    id={user}
+                                    checked={addUsers.includes(user)}
+                                    onChange={()=>handleToggleUser(user)}
+                                />
+
+                                <label htmlFor={user} className="ms-2">
+                                    {user}
+                                </label>
+
+                            </li>
                         ))}
                     </ul>
                 </div>
-                <Button type="submit" variant="contained" className="mx-auto" fullWidth>Add user</Button>
+
+                <Button type="submit" variant="contained" fullWidth>
+                    {addUsers.length>0?"Create Group":"Add User"}
+                </Button>
+
             </form>
         </div>
-    )
+    );
 }
 
 export default AddUser;

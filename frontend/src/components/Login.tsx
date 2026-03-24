@@ -7,9 +7,10 @@ interface LoginProps{
     setPassword:React.Dispatch<React.SetStateAction<string>>,
     setUsername:React.Dispatch<React.SetStateAction<string>>,
     joinChat:(e: React.FormEvent<HTMLFormElement>)=>void;
+    loginError:string;
 }
 
-function Login({username, setUsername, joinChat, password, setPassword}:LoginProps){
+function Login({username, setUsername, joinChat, password, setPassword, loginError}:LoginProps){
 
     return(
         <>
@@ -25,6 +26,11 @@ function Login({username, setUsername, joinChat, password, setPassword}:LoginPro
                     <input type="password" className="form-control mb-3 bg-dark text-light" id="floatingPassword" placeholder="Password" value={password} onChange={(e)=>setPassword(e.target.value)}/>
                     <label htmlFor="floatingPassword">Password</label>
                 </div>
+                {loginError && (
+                    <div className="alert alert-danger py-2" role="alert">
+                        {loginError}
+                    </div>
+                )}
                 <Link to="/register" className="text-decoration-none mb-2">
                 Register
                 </Link>

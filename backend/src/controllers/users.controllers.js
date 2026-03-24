@@ -24,7 +24,7 @@ export const loginUser = async(req, res)=>{
     const user = await users.findOne({username});
 
     if(!user || user.password !== password){
-        res.status(401).json({message:'Invalid credentials'});
+        return res.status(401).json({message:'Invalid username or password'});
     }
 
     const token = jwt.sign(
@@ -42,5 +42,5 @@ export const loginUser = async(req, res)=>{
         username:user.username
     }
 
-    res.json(msgData);
+    return res.json(msgData);
 }

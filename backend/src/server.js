@@ -7,6 +7,7 @@ import http from 'http';
 import message from "./models/message.js";
 import userRouter from "./routes/users.routes.js";
 import users from "./models/users.js";
+import Group from "./models/group.js";
 import jwt from 'jsonwebtoken';
 
 dotenv.config();
@@ -18,6 +19,23 @@ const normalizeRoomName = (room)=>{
     if(parts.length !== 2) return room;
     return parts.sort().join("_");
 }
+
+const getRoomParticipants = (room) => {
+    if (typeof room !== "string") return [];
+    return room.split("_").filter(Boolean);
+};
+
+const isPrivateRoom = (room) => getRoomParticipants(room).length === 2;
+
+const isUserInRoom = (room, username) => {
+    if (!room || !username) return false;
+    return getRoomParticipants(room).includes(username);
+};
+
+const toSafeRoomId = (value) => {
+    if (typeof value !== "string") return "";
+    return value.trim().replace(/\s+/g, "_");
+};
 
 const app = express();
 const server = http.createServer(app);
@@ -55,7 +73,9 @@ io.on('connection', async(socket)=>{
 
     const room = socket.room;
 
-    socket.join(room);
+    if (room) {
+        socket.join(room);
+    }
     // Personal room so we can always reach this user (for private chat invites/messages)
     if (socket.username) {
         socket.join(socket.username);
@@ -69,10 +89,11 @@ io.on('connection', async(socket)=>{
     const messages = await message.find({room}).sort({createdAt:1});
 
     const allRooms = await message.distinct("room");
-
-    const userRooms = allRooms.filter(room =>
-    room.includes(socket.username)
+    const groupRooms = await Group.find({ members: socket.username }, { roomId: 1, _id: 0 });
+    const privateRooms = allRooms.filter((existingRoom) =>
+        isUserInRoom(existingRoom, socket.username)
     );
+    const userRooms = [...new Set([...privateRooms, ...groupRooms.map((g) => g.roomId)])];
 
     socket.emit("conversationsList", userRooms);
 
@@ -87,10 +108,11 @@ io.on('connection', async(socket)=>{
 
     socket.on("getRooms", async()=>{
        const allRooms = await message.distinct("room");
-
-        const userRooms = allRooms.filter(room =>
-        room.includes(socket.username)
+        const groupRooms = await Group.find({ members: socket.username }, { roomId: 1, _id: 0 });
+        const privateRooms = allRooms.filter((existingRoom) =>
+            isUserInRoom(existingRoom, socket.username)
         );
+        const userRooms = [...new Set([...privateRooms, ...groupRooms.map((g) => g.roomId)])];
 
         socket.emit("conversationsList", userRooms);
     })
@@ -102,26 +124,33 @@ io.on('connection', async(socket)=>{
     })
 
     socket.on("sendMessage", async(data)=>{
-        // Always normalize private room names so we don't create both "a_b" and "b_a"
-        socket.room = normalizeRoomName(socket.room);
+        const requestedRoom = typeof data?.room === "string" ? data.room : socket.room;
+        const roomToUse = isPrivateRoom(requestedRoom)
+            ? normalizeRoomName(requestedRoom)
+            : requestedRoom;
+
+        if (!roomToUse) return;
+
+        socket.room = roomToUse;
+        socket.join(roomToUse);
         const msgData = {
             username: socket.username,
-            room: socket.room,
+            room: roomToUse,
             message: data.message,
             time: data.time
     };
         console.log("Message:", data);
         const newMessage = await message.create(msgData);
 
-        io.to(socket.room).emit("receiveMessage", newMessage);
+        io.to(roomToUse).emit("receiveMessage", newMessage);
 
         // Private rooms are named like "alice_bob". Forward new private messages to the
         // other user's personal room so they receive it even if they haven't joined yet.
-        if (typeof socket.room === "string" && socket.room.includes("_")) {
-            const otherUser = socket.room.split("_").find(u => u !== socket.username);
+        if (isPrivateRoom(roomToUse)) {
+            const otherUser = roomToUse.split("_").find(u => u !== socket.username);
             if (otherUser) {
                 io.to(otherUser).emit("receiveMessage", newMessage);
-                io.to(otherUser).emit("conversationsList", [socket.room]);
+                io.to(otherUser).emit("conversationsList", [roomToUse]);
             }
         }
     })
@@ -153,6 +182,77 @@ io.on('connection', async(socket)=>{
 
         const messages = await message.find({room: normalized}).sort({createdAt:1});
         socket.emit("previousMessages", messages);
+    });
+
+    socket.on("startGroupChat", async ({users})=>{
+        const allUsers = [...new Set([...(users || []), socket.username])];
+        const roomId = allUsers.sort().join("_");
+
+        await Group.findOneAndUpdate(
+            { roomId },
+            { roomId, members: allUsers, createdBy: socket.username },
+            { upsert: true, new: true }
+        );
+
+        // join creator
+        socket.join(roomId);
+        socket.room = roomId;
+
+        // send previous messages
+        const messages = await message.find({room: roomId}).sort({createdAt:1});
+        socket.emit("previousMessages", messages);
+
+        // update creator UI
+        socket.emit("chatStarted", {room: roomId});
+
+        // ✅ IMPORTANT: update ALL users
+        allUsers.forEach(user=>{
+            io.to(user).emit("conversationsList", [roomId]);
+        });
+
+        // Notify invited users so their UI can auto-select/open if needed
+        allUsers.forEach(user=>{
+            if(user !== socket.username){
+                io.to(user).emit("groupChatStarted", { room: roomId });
+            }
+        });
+    });
+
+    socket.on("renameGroupRoom", async ({ oldRoom, newRoom }) => {
+        const currentRoom = toSafeRoomId(oldRoom);
+        const nextRoom = toSafeRoomId(newRoom);
+        if (!currentRoom || !nextRoom) return;
+        if (currentRoom === nextRoom) return;
+
+        const group = await Group.findOne({ roomId: currentRoom });
+        if (!group) {
+            socket.emit("groupRenameError", { message: "Group not found." });
+            return;
+        }
+        if (!group.members.includes(socket.username)) {
+            socket.emit("groupRenameError", { message: "You are not a member of this group." });
+            return;
+        }
+
+        const existing = await Group.findOne({ roomId: nextRoom });
+        if (existing) {
+            socket.emit("groupRenameError", { message: "Group name already exists. Choose another one." });
+            return;
+        }
+
+        await message.updateMany({ room: currentRoom }, { $set: { room: nextRoom } });
+        await Group.updateOne(
+            { roomId: currentRoom },
+            { $set: { roomId: nextRoom } }
+        );
+
+        io.in(currentRoom).socketsJoin(nextRoom);
+        io.in(currentRoom).socketsLeave(currentRoom);
+
+        group.members.forEach((member) => {
+            io.to(member).emit("groupRenamed", { oldRoom: currentRoom, newRoom: nextRoom });
+            io.to(member).emit("conversationsList", [nextRoom]);
+        });
     });
     
 })

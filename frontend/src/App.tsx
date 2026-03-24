@@ -29,18 +29,102 @@ function App() {
   const typeTimeoutRef = useRef<number | null>(null);
   const [availableRooms, setAvailableRooms]=useState<string[]>([]);
   const [usersList, setUsersList]=useState<string[]>([]);
-  const [addUser, setAddUser]=useState<string>('');
+  const [addUser, setAddUser]=useState<string[]>([]);
   const [selectedRoom, setSelectedRoom] = useState<string>('');
+  const [loginError, setLoginError] = useState<string>("");
 
   const socket = useRef<Socket | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
   const currentRoomRef = useRef<string>("");
-  console.log(`selected room is ${selectedRoom}`)
+  const listenersBoundRef = useRef(false);
 
-    const createSocket = (token:string)=>{
-      socket.current = io("http://localhost:5432",{
-        auth:{token}
-      })
+  const attachSocketListeners = (activeSocket: Socket) => {
+    if (listenersBoundRef.current) return;
+    listenersBoundRef.current = true;
+
+    activeSocket.on("connect",()=>{
+      activeSocket.emit("getRooms");
+      activeSocket.emit("getUsers");
+    });
+
+    activeSocket.on("usersList",(data)=>{
+      setUsersList(data);
+    });
+
+    activeSocket.on("conversationsList",(rooms:string[])=>{
+      setAvailableRooms(prev => [...new Set([...prev, ...rooms])]);
+    });
+
+    activeSocket.on("chatStarted", (data:{room:string})=>{
+      setRoom(data.room);
+      setSelectedRoom(data.room);
+      setMessages([]);
+      activeSocket.emit("joinRoom", data.room);
+    });
+
+    activeSocket.on("privateChatStarted", ({ room })=>{
+      if (!room) return;
+      setAvailableRooms(prev => [...new Set([...prev, room])]);
+    });
+
+    activeSocket.on("groupChatStarted", ({ room })=>{
+      if (!room) return;
+      setAvailableRooms(prev => [...new Set([...prev, room])]);
+    });
+
+    activeSocket.on("groupRenamed", ({ oldRoom, newRoom }) => {
+      if (!oldRoom || !newRoom) return;
+      setAvailableRooms((prev) => {
+        const replaced = prev.map((r) => (r === oldRoom ? newRoom : r));
+        return [...new Set(replaced)];
+      });
+      setMessages((prev) => prev.map((msg) => (
+        msg.room === oldRoom ? { ...msg, room: newRoom } : msg
+      )));
+      setRoom((prev) => (prev === oldRoom ? newRoom : prev));
+      setSelectedRoom((prev) => {
+        if (prev !== oldRoom) return prev;
+        activeSocket.emit("joinRoom", newRoom);
+        return newRoom;
+      });
+    });
+
+    activeSocket.on("groupRenameError", ({ message }:{message:string}) => {
+      // Keep this simple for now; can be replaced with a toast later.
+      window.alert(message || "Unable to rename group.");
+    });
+
+    activeSocket.on("receiveMessage",(data:ChatMessage)=>{
+      if (data?.room && data.room !== currentRoomRef.current) return;
+      setMessages(prev => mergeUniqueById(prev, [data]));
+    });
+
+    activeSocket.on("previousMessages",(msgs:ChatMessage[])=>{
+      setMessages(() => mergeUniqueById([], msgs));
+    });
+
+    activeSocket.on("userTyping",(username:string)=>{
+      setTypingUser(username);
+      if(typeTimeoutRef.current){
+        clearTimeout(typeTimeoutRef.current);
+      }
+      typeTimeoutRef.current = window.setTimeout(()=>{
+        setTypingUser(null);
+      },1500);
+    });
+  };
+
+  const createSocket = (token:string)=>{
+    if (socket.current) {
+      socket.current.disconnect();
+      socket.current = null;
+      listenersBoundRef.current = false;
+    }
+    const nextSocket = io("http://localhost:5432",{
+      auth:{token}
+    });
+    socket.current = nextSocket;
+    attachSocketListeners(nextSocket);
   }
 
   useEffect(()=>{
@@ -50,8 +134,8 @@ function App() {
   },[room])
 
   useEffect(()=>{
-    currentRoomRef.current = room;
-  },[room]);
+    currentRoomRef.current = selectedRoom;
+  },[selectedRoom]);
 
   if(logOut){
     localStorage.removeItem('token');
@@ -63,19 +147,18 @@ function App() {
   },[messages]);
 
   const sendMessage = (text:string)=>{
-    if(!socket.current) return;
-    if(!text.trim()) return
+  if(!socket.current || !selectedRoom) return;
 
-    const msgData={
-      username,
-      room,
-      message:text, 
-      time:new Date().toLocaleTimeString(),
-    }
+  const msgData={
+    username,
+    room: selectedRoom, // ✅ FIX
+    message:text, 
+    time:new Date().toLocaleTimeString(),
+  };
 
-    socket.current.emit("sendMessage", msgData);
-    setMessage('');
-  }
+  socket.current.emit("sendMessage", msgData);
+  setMessage('');
+};
 
   const mergeUniqueById = (prev:ChatMessage[], incoming:ChatMessage[])=>{
     const seen = new Set<string>();
@@ -97,6 +180,7 @@ function App() {
 
   const joinChat = async (e:React.FormEvent<HTMLFormElement>)=>{
     e.preventDefault();
+    setLoginError("");
 
     const res = await fetch("http://localhost:5432/users/login",{
       method:"POST",
@@ -105,70 +189,17 @@ function App() {
     });
 
     const data = await res.json();
+    if (!res.ok) {
+      setLoginError(data?.message || "Unable to login. Please try again.");
+      return;
+    }
 
     setUsername(data.username);
 
     localStorage.setItem("token", data.token);
     setRoom(data.room);
 
-    socket.current = io("http://localhost:5432",{
-      auth:{ token:data.token }
-    });
-
-    socket.current.on("usersList",(data)=>{
-      setUsersList(data);
-    })
-
-    socket.current.on("getRooms",(rooms)=>{
-      setAvailableRooms(rooms);
-    });
-
-    socket.current.on("conversationsList",(rooms)=>{
-      setAvailableRooms(prev => [...new Set([...prev, ...rooms])]);
-    });
-
-    socket.current.on("chatStarted", (data)=>{
-      setRoom(data.room);
-      setSelectedRoom(data.room);
-      setMessages([]);
-    })
-
-    socket.current.on("privateChatStarted", ({ room })=>{
-      if (!room) return;
-      setAvailableRooms(prev => [...new Set([...prev, room])]);
-    });
-
-    // attach listeners immediately
-    socket.current.on("connect",()=>{
-      console.log("Connected:", socket.current?.id);
-      socket.current?.emit("getRooms");
-      socket.current?.emit("getUsers");
-      socket.current?.emit("getConversations");
-    });
-
-    socket.current.on("receiveMessage",(data)=>{
-      // Only append messages for the currently active room
-      if (data?.room && data.room !== currentRoomRef.current) return;
-      setMessages(prev => mergeUniqueById(prev, [data]));
-    });
-
-    socket.current.on("previousMessages",(msgs)=>{
-      setMessages(() => mergeUniqueById([], msgs));
-    });
-
-    socket.current.emit("getUsers");
-
-    socket.current.on("userTyping",(username:string)=>{
-      setTypingUser(username);
-
-      if(typeTimeoutRef.current){
-        clearTimeout(typeTimeoutRef.current);
-      }
-
-      typeTimeoutRef.current = window.setTimeout(()=>{
-        setTypingUser(null);
-      },1500);
-    });
+    createSocket(data.token);
 
     setPassword("");
     navigate("/message");
@@ -179,41 +210,15 @@ function App() {
 
     if(!token) return;
 
-    socket.current = io("http://localhost:5432",{
-      auth:{token}
-    });
+    createSocket(token);
 
-    socket.current.on("usersList",(data)=>{
-      setUsersList(data);
-    })
-
-    socket.current.on("connect",()=>{
-      console.log("Reconnected with token");
-      socket.current?.emit("getRooms");
-    });
-
-    socket.current.on("getRooms",(rooms)=>{
-      setAvailableRooms(rooms);
-    });
-
-    socket.current.on("privateChatStarted", ({ room })=>{
-      if (!room) return;
-      setAvailableRooms(prev => [...new Set([...prev, room])]);
-    });
-
-
-    socket.current.on("chatStarted", (data)=>{
-      setRoom(data.room);
-      setSelectedRoom(data.room);
-      setMessages([]);
-    })
-
-    socket.current.emit("getConversations");
-
-    socket.current.on("conversationsList",(rooms)=>{
-      setAvailableRooms(prev => [...new Set([...prev, ...rooms])]);
-    });
-
+    return () => {
+      if (socket.current) {
+        socket.current.disconnect();
+        socket.current = null;
+        listenersBoundRef.current = false;
+      }
+    };
   },[]);
 
 
@@ -232,7 +237,8 @@ function App() {
               setUsername={setUsername} 
               password={password} 
               setPassword={setPassword} 
-              joinChat={joinChat}/>} 
+              joinChat={joinChat}
+              loginError={loginError}/>} 
             />
           <Route path="/message" element={
             <ProtectedRoute>
@@ -250,7 +256,6 @@ function App() {
               usersList={usersList}
               setAddUser={setAddUser}
               addUser={addUser}
-              setRoom={setRoom}
               setSelectedRoom={setSelectedRoom}
             />
           </ProtectedRoute>

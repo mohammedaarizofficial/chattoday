@@ -7,28 +7,28 @@ interface SidebarProps{
   setModal:React.Dispatch<React.SetStateAction<boolean>>;
   rooms:string[];
   username:string;
-  setRoom:(room:string)=>void;
   setSelectedRoom:React.Dispatch<React.SetStateAction<string>>
   socket:RefObject<Socket<DefaultEventsMap, DefaultEventsMap>|null>
 }
 
-function SidebarComponent({setModal, rooms, username, setRoom, setSelectedRoom,socket}:SidebarProps){
+function SidebarComponent({setModal, rooms, username, setSelectedRoom, socket}:SidebarProps){
 
-  const   getOtherUser = (room:string, username:string)=>{
-    if(!room) return room;
-    if(!username) return room;
-    if(!room.includes("_")) return room;
+  const getChatName = (room:string, username:string)=>{
+    if(!room) return "";
+
     const parts = room.split("_");
-    // Only treat it as a private chat if the current user is actually part of it
-    if(!parts.includes(username)) return null;
-    return parts.find(user => user !== username) || room;
-  }
+
+    if(parts.length === 2 && parts.includes(username)){
+      return parts.find(u => u !== username) || room;
+    }
+
+    return room;
+  };
 
   const handleSelectRoom = (room:string)=>{
     setSelectedRoom(room);
-    setRoom(room);
     socket.current?.emit("joinRoom", room);
-  }
+  };
 
   return(
     <Sidebar position="left">
@@ -36,35 +36,32 @@ function SidebarComponent({setModal, rooms, username, setRoom, setSelectedRoom,s
       <Search className="mt-2 mx-1" placeholder="Search..." />
 
       <div className="d-flex justify-content-end">
-        <AddUserButton className="hover-scale" onClick={()=>setModal(true)}/>
+        <AddUserButton onClick={()=>setModal(true)}/>
       </div>
 
       <ConversationList>
         {rooms.length === 0 ? (
-        <div className="d-flex text-center ms-1">
-          No Messages yet...
-        </div>):(
-          rooms.map((room,index)=>{
-          const otherUser = getOtherUser(room, username);
-          if(otherUser === null) return null;
+          <div className="text-center">No Messages yet...</div>
+        ) : (
+          rooms.map((room)=>{
 
-          return (
-            <Conversation
-              key={index}
-              name={otherUser}
-              onClick={()=>handleSelectRoom(room)}
-            >
-              <Avatar name={otherUser} />
-            </Conversation>
-          );
-        })
-        )
-        }
-        
+            const chatName = getChatName(room, username);
+
+            return (
+              <Conversation
+                key={room}
+                name={chatName}
+                onClick={()=>handleSelectRoom(room)}
+              >
+                <Avatar name={chatName || "User"} />
+              </Conversation>
+            );
+          })
+        )}
       </ConversationList>
 
     </Sidebar>
-  )
+  );
 }
 
 export default SidebarComponent;

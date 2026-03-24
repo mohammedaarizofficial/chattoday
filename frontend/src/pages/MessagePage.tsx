@@ -7,9 +7,11 @@ import { Message,MainContainer,MessageList,ChatContainer,MessageInput,Conversati
 import "@chatscope/chat-ui-kit-styles/dist/default/styles.min.css";
 import SidebarComponent from '../components/SidebarComponent';
 import AddUser from '../components/AddUser';
+import CreateRoomModal from '../components/CreateRoomModal';
 
 
 type ChatMessage = {
+  _id?: string,
   room:string,
   username:string,
   message:string,
@@ -27,30 +29,33 @@ interface MessagePageProps{
     socket:RefObject<Socket<DefaultEventsMap, DefaultEventsMap> | null>,
     setLogOut:React.Dispatch<React.SetStateAction<boolean>>;
     usersList:string[];
-    setAddUser:React.Dispatch<React.SetStateAction<string>>;
-    addUser:string,
-    setRoom:React.Dispatch<React.SetStateAction<string>>;
+    setAddUser:React.Dispatch<React.SetStateAction<string[]>>;
+    addUser:string[],
     setSelectedRoom:React.Dispatch<React.SetStateAction<string>>
 }
 
 
-function MessagePage({username,selectedRoom,availableRooms, setMessage,typingUser, messages,sendMessage,message,socket,setLogOut,usersList,setAddUser,addUser,setRoom,setSelectedRoom}:MessagePageProps){
+function MessagePage({username,selectedRoom,availableRooms, setMessage,typingUser, messages,sendMessage,message,socket,setLogOut,usersList,setAddUser,addUser,setSelectedRoom}:MessagePageProps){
     const [modal, setModal]=useState<boolean>(false);
+    const [createRoomModal, setCreateRoomModal]=useState<boolean>(false);
     const LogOut = ()=>{
         setLogOut(true);
     }
 
-    const getOtherUser = (room:string, username:string)=>{
-        if(!room) return room;
-        if(!username) return room;
-        if(!room.includes("_")) return room;
-        const parts = room.split("_");
-        if(!parts.includes(username)) return room;
-        return parts.find(user => user !== username) || room;
-    }
+    const getChatTitle = (room:string, username:string)=>{
+  if(!room) return "Select a conversation";
 
-    const chatTitle = selectedRoom ? (getOtherUser(selectedRoom, username) || selectedRoom) : "Select a conversation";
-    const typingIndicator =chatTitle+" is typing...";
+  const parts = room.split("_");
+
+  if(parts.length === 2 && parts.includes(username)){
+    return parts.find(u => u !== username) || room;
+  }
+
+  return room;
+};
+
+const chatTitle = getChatTitle(selectedRoom, username);
+    const typingIndicator = chatTitle;
 
     useEffect(()=>{
         if(!modal) return;
@@ -58,6 +63,11 @@ function MessagePage({username,selectedRoom,availableRooms, setMessage,typingUse
         socket.current?.emit("getUsers");
 
     },[modal]);
+
+    const handleCreateRoom = ()=>{
+        setCreateRoomModal(true);
+        console.log("info button is clicked");
+    }
 
     return(
         <>
@@ -67,7 +77,6 @@ function MessagePage({username,selectedRoom,availableRooms, setMessage,typingUse
                     <SidebarComponent 
                     setModal={setModal}
                     rooms={availableRooms}
-                    setRoom={setRoom}
                     username={username}
                     setSelectedRoom={setSelectedRoom}
                     socket={socket}
@@ -88,22 +97,26 @@ function MessagePage({username,selectedRoom,availableRooms, setMessage,typingUse
                         <ChatContainer>
                         <ConversationHeader>
                             <Avatar
-                                name={chatTitle??"unknown"}
+                                name={chatTitle||"User"}
                                 src="https://chatscope.io/storybook/react/assets/emily-xzL8sDL2.svg"
                             />
                             <ConversationHeader.Content
                                 userName={chatTitle}
                             />
                             <ConversationHeader.Actions>
+                                <div className="d-flex align-items-center me-3">
+                                    <Avatar name={username} />
+                                    <span className="ms-2 small text-muted">You: {username}</span>
+                                </div>
                                 <VoiceCallButton title="Start voice call" />
                                 <VideoCallButton title="Start video call" />
-                                <InfoButton title="Show info" />
+                                <InfoButton title="Show info" onClick={handleCreateRoom}/>
                             </ConversationHeader.Actions>
                         </ConversationHeader>
                         <MessageList >
                             {messages.map((msg,index)=>(
                             <Message
-                                key={index}
+                                key={msg._id ?? `${msg.username}-${msg.time}-${index}`}
                                 model={{
                                 message: msg.message,
                                 sentTime: msg.time,
@@ -125,8 +138,8 @@ function MessagePage({username,selectedRoom,availableRooms, setMessage,typingUse
                         </ChatContainer>
                     </MainContainer>
                     ) : (
-                    <div className="d-flex justify-content-center align-items-center h-100 text-muted">
-                        <h3>Select a conversation to start chatting</h3>
+                    <div className="d-flex justify-content-center align-items-center h-100 text-muted bg-light">
+                        <h3 className="text-black">Select a conversation to start chatting</h3>
                     </div>
                     )}
                     {modal && (<>
@@ -145,9 +158,10 @@ function MessagePage({username,selectedRoom,availableRooms, setMessage,typingUse
 
                                 <div className="modal-body">
                                 <AddUser 
+                                username={username}
                                 usersList={usersList} 
-                                setAddUser={setAddUser}
-                                addUser={addUser}
+                                setAddUsers={setAddUser}
+                                addUsers={addUser}
                                 setModal={setModal}
                                 socket={socket}
                                 />
@@ -166,6 +180,13 @@ function MessagePage({username,selectedRoom,availableRooms, setMessage,typingUse
                             </div>
                         </div>
                     </>
+                    )}
+                    {createRoomModal&&(
+                        <CreateRoomModal 
+                            setCreateRoomModal={setCreateRoomModal}
+                            selectedRoom={selectedRoom}
+                            socket={socket}
+                        />
                     )}
                     </main>
                 </div>
