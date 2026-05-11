@@ -37,6 +37,22 @@ const toSafeRoomId = (value) => {
     return value.trim().replace(/\s+/g, "_");
 };
 
+const getUserRooms = async (username) => {
+    if (!username) return [];
+    const allRooms = await message.distinct("room");
+    const groupRooms = await Group.find({ members: username }, { roomId: 1, _id: 0 });
+    const privateRooms = allRooms.filter((existingRoom) =>
+        isUserInRoom(existingRoom, username)
+    );
+    // Backward-compatible fallback for rooms that don't encode participants in room id.
+    const roomsFromOwnMessages = await message.distinct("room", { username });
+    return [...new Set([
+        ...privateRooms,
+        ...groupRooms.map((g) => g.roomId),
+        ...roomsFromOwnMessages
+    ])];
+};
+
 const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT;
@@ -44,7 +60,13 @@ app.use(cors());
 
 const io = new Server(server, {
     cors:{
-        origin:'http://localhost:5173',
+        origin:(origin, callback)=>{
+            if(!origin) return callback(null, true);
+            if(origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:")){
+                return callback(null, true);
+            }
+            return callback(new Error("Not allowed by CORS"));
+        },
         methods:["GET", "POST"]
     }
 })
@@ -70,6 +92,7 @@ io.use((socket,next)=>{
 })
 
 io.on('connection', async(socket)=>{
+    console.log("Socket connected", { id: socket.id, username: socket.username });
 
     const room = socket.room;
 
@@ -81,19 +104,14 @@ io.on('connection', async(socket)=>{
         socket.join(socket.username);
     }
 
-    socket.on('disconnect', ()=>{
-        console.log('User disconnected', socket.id);
+    socket.on('disconnect', (reason)=>{
+        console.log('User disconnected', { id: socket.id, username: socket.username, reason });
     })
 
 
     const messages = await message.find({room}).sort({createdAt:1});
 
-    const allRooms = await message.distinct("room");
-    const groupRooms = await Group.find({ members: socket.username }, { roomId: 1, _id: 0 });
-    const privateRooms = allRooms.filter((existingRoom) =>
-        isUserInRoom(existingRoom, socket.username)
-    );
-    const userRooms = [...new Set([...privateRooms, ...groupRooms.map((g) => g.roomId)])];
+    const userRooms = await getUserRooms(socket.username);
 
     socket.emit("conversationsList", userRooms);
 
@@ -107,13 +125,7 @@ io.on('connection', async(socket)=>{
 
 
     socket.on("getRooms", async()=>{
-       const allRooms = await message.distinct("room");
-        const groupRooms = await Group.find({ members: socket.username }, { roomId: 1, _id: 0 });
-        const privateRooms = allRooms.filter((existingRoom) =>
-            isUserInRoom(existingRoom, socket.username)
-        );
-        const userRooms = [...new Set([...privateRooms, ...groupRooms.map((g) => g.roomId)])];
-
+        const userRooms = await getUserRooms(socket.username);
         socket.emit("conversationsList", userRooms);
     })
 
@@ -224,10 +236,19 @@ io.on('connection', async(socket)=>{
         if (!currentRoom || !nextRoom) return;
         if (currentRoom === nextRoom) return;
 
-        const group = await Group.findOne({ roomId: currentRoom });
+        let group = await Group.findOne({ roomId: currentRoom });
+        // Fallback: bootstrap a Group doc from legacy rooms that never had a Group entry
         if (!group) {
-            socket.emit("groupRenameError", { message: "Group not found." });
-            return;
+            const memberUsernames = await message.distinct("username", { room: currentRoom });
+            if (!memberUsernames || memberUsernames.length === 0) {
+                socket.emit("groupRenameError", { message: "Group not found." });
+                return;
+            }
+            group = await Group.create({
+                roomId: currentRoom,
+                members: memberUsernames,
+                createdBy: socket.username
+            });
         }
         if (!group.members.includes(socket.username)) {
             socket.emit("groupRenameError", { message: "You are not a member of this group." });

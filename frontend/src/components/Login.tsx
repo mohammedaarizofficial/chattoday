@@ -1,4 +1,3 @@
-import Button from "@mui/material/Button"
 import { Link } from "react-router-dom"
 
 interface LoginProps{
@@ -14,27 +13,45 @@ function Login({username, setUsername, joinChat, password, setPassword, loginErr
 
     return(
         <>
-        <div className='d-flex justify-content-center align-items-center' style={{maxWidth:"25%"}}>
-            <form onSubmit={joinChat}  className="mx-auto my-auto border border-secondary-subtle rounded-2 p-3">
-                <img className="mb-4" src="/docs/5.3/assets/brand/bootstrap-logo.svg" alt="" width="72" height="57" />
-                <h1 className="h3 mb-3 fw-normal text-center text-light">Login</h1>
-                <div className="form-floating">
-                    <input type="text" className="form-control mb-3 bg-dark text-light" id="floatingInput" placeholder="Username" value={username} onChange={(e)=>setUsername(e.target.value)}/>
-                    <label htmlFor="floatingInput">Username</label>
+        <div className="auth-shell">
+            <form onSubmit={joinChat} className="auth-card">
+                <p className="auth-brand">aperture</p>
+                <h1 className="auth-title">Welcome back</h1>
+                <p className="auth-subtitle">Log in to continue your conversations.</p>
+
+                <div className="auth-field">
+                    <label htmlFor="username">Username</label>
+                    <input
+                        id="username"
+                        type="text"
+                        placeholder="Enter your username"
+                        value={username}
+                        onChange={(e)=>setUsername(e.target.value)}
+                        required
+                    />
                 </div>
-                <div className="form-floating">
-                    <input type="password" className="form-control mb-3 bg-dark text-light" id="floatingPassword" placeholder="Password" value={password} onChange={(e)=>setPassword(e.target.value)}/>
-                    <label htmlFor="floatingPassword">Password</label>
+
+                <div className="auth-field">
+                    <label htmlFor="password">Password</label>
+                    <input
+                        id="password"
+                        type="password"
+                        placeholder="Enter your password"
+                        value={password}
+                        onChange={(e)=>setPassword(e.target.value)}
+                        required
+                    />
                 </div>
                 {loginError && (
-                    <div className="alert alert-danger py-2" role="alert">
+                    <div className="auth-error" role="alert">
                         {loginError}
                     </div>
                 )}
-                <Link to="/register" className="text-decoration-none mb-2">
-                Register
-                </Link>
-                <Button type="submit" variant="contained" className="mx-auto" fullWidth>Login</Button>
+                <button type="submit" className="auth-submit">Log in</button>
+                <p className="auth-footer">
+                    Don&apos;t have an account?{" "}
+                    <Link to="/register">Register</Link>
+                </p>
             </form>
         </div>
         </>

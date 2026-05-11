@@ -1,13 +1,10 @@
-import Button from '@mui/material/Button';
 import { useState,useEffect } from 'react';
 import type { Socket } from 'socket.io-client';
 import type { RefObject } from 'react';
 import  type {DefaultEventsMap}  from "socket.io";
-import { Message,MainContainer,MessageList,ChatContainer,MessageInput,ConversationHeader,Avatar,VoiceCallButton,VideoCallButton,InfoButton} from '@chatscope/chat-ui-kit-react';
-import "@chatscope/chat-ui-kit-styles/dist/default/styles.min.css";
-import SidebarComponent from '../components/SidebarComponent';
 import AddUser from '../components/AddUser';
 import CreateRoomModal from '../components/CreateRoomModal';
+import { Search, Phone, Video, Info, Smile, Send, Edit, MessageSquare, LogOut as LogOutIcon } from "lucide-react";
 
 
 type ChatMessage = {
@@ -38,162 +35,213 @@ interface MessagePageProps{
 function MessagePage({username,selectedRoom,availableRooms, setMessage,typingUser, messages,sendMessage,message,socket,setLogOut,usersList,setAddUser,addUser,setSelectedRoom}:MessagePageProps){
     const [modal, setModal]=useState<boolean>(false);
     const [createRoomModal, setCreateRoomModal]=useState<boolean>(false);
-    const LogOut = ()=>{
+    const handleLogout = ()=>{
         setLogOut(true);
-    }
+    };
 
     const getChatTitle = (room:string, username:string)=>{
-  if(!room) return "Select a conversation";
+        if(!room) return "Select a conversation";
+        const parts = room.split("_").filter(Boolean);
+        if(parts.length === 2 && parts.includes(username)){
+            return parts.filter(u => u !== username).join(", ") || room;
+        }
+        if (room.includes("_")) return parts.join(", ");
+        return room;
+    };
 
-  const parts = room.split("_");
-
-  if(parts.length === 2 && parts.includes(username)){
-    return parts.find(u => u !== username) || room;
-  }
-
-  return room;
-};
-
-const chatTitle = getChatTitle(selectedRoom, username);
-    const typingIndicator = chatTitle;
+    useEffect(() => {
+        if (selectedRoom) return;
+        if (!availableRooms.length) return;
+        const firstRoom = availableRooms[0];
+        setSelectedRoom(firstRoom);
+        socket.current?.emit("joinRoom", firstRoom);
+    }, [availableRooms, selectedRoom, setSelectedRoom, socket]);
 
     useEffect(()=>{
         if(!modal) return;
-
         socket.current?.emit("getUsers");
-
-    },[modal]);
+    },[modal, socket]);
 
     const handleCreateRoom = ()=>{
         setCreateRoomModal(true);
-        console.log("info button is clicked");
-    }
+    };
+
+    const selectedTitle = getChatTitle(selectedRoom, username);
+    const selectedInitials = selectedTitle
+        .split(",")
+        .map((s) => s.trim().charAt(0))
+        .filter(Boolean)
+        .slice(0, 2)
+        .join("")
+        .toUpperCase() || "CH";
 
     return(
         <>
-        <div className="container-fluid vh-100 bg-dark text-light vw-100 p-0" style={{height:"100%"}}>
-            <div className="row g-0">
-                <div className="col-2 vh-100 d-flex flex-column vh-100 border-end border-secondary-subtle">
-                    <SidebarComponent 
-                    setModal={setModal}
-                    rooms={availableRooms}
-                    username={username}
-                    setSelectedRoom={setSelectedRoom}
-                    socket={socket}
-                    />
-                <div className="mt-auto text-center" style={{backgroundColor:"white"}}>
-                    <Button className="mb-2" variant='text' onClick={LogOut}>Log Out</Button>
-                </div>
-                </div>
-                <div className='col-10 d-flex flex-column vh-100 '>
-                    {typingUser && typingUser !== username && (
-                    <div style={{ fontStyle: "italic", color: "gray" }}>
-                        {typingIndicator} is typing...
+        <div className="messages-page-shell">
+            <div className="messages-grid">
+                <aside className="threads-panel">
+                    <div className="threads-header">
+                        <h1>Messages</h1>
+                        <button type="button" onClick={() => setModal(true)} aria-label="New message">
+                            <Edit size={18} />
+                        </button>
                     </div>
-                    )}
-                    <main className="flex-grow-1 overflow-auto">
+                    <div className="threads-search">
+                        <Search size={16} />
+                        <input placeholder="Search" aria-label="Search conversations" />
+                    </div>
+                    <div className="threads-list">
+                        {availableRooms.length === 0 ? (
+                            <div className="threads-empty">No conversations found</div>
+                        ) : (
+                            availableRooms.map((room) => {
+                                const label = getChatTitle(room, username);
+                                const isActive = room === selectedRoom;
+                                return (
+                                    <button
+                                        key={room}
+                                        type="button"
+                                        className={`thread-item ${isActive ? "active" : ""}`}
+                                        onClick={() => {
+                                            setSelectedRoom(room);
+                                            socket.current?.emit("joinRoom", room);
+                                        }}
+                                    >
+                                        <div className="thread-avatar">{label.charAt(0).toUpperCase()}</div>
+                                        <div className="thread-content">
+                                            <div className="thread-name">{label}</div>
+                                            <div className="thread-preview">{isActive ? "Open conversation" : "Tap to open chat"}</div>
+                                        </div>
+                                    </button>
+                                );
+                            })
+                        )}
+                    </div>
+                    <button type="button" className="logout-floating" onClick={handleLogout}>
+                        <LogOutIcon size={16} />
+                        <span>Log out</span>
+                    </button>
+                </aside>
+
+                <section className="conversation-panel">
                     {selectedRoom ? (
-                    <MainContainer>
-                        <ChatContainer>
-                        <ConversationHeader>
-                            <Avatar
-                                name={chatTitle||"User"}
-                                src="https://chatscope.io/storybook/react/assets/emily-xzL8sDL2.svg"
-                            />
-                            <ConversationHeader.Content
-                                userName={chatTitle}
-                            />
-                            <ConversationHeader.Actions>
-                                <div className="d-flex align-items-center me-3">
-                                    <Avatar name={username} />
-                                    <span className="ms-2 small text-muted">You: {username}</span>
+                        <>
+                            <header className="conversation-header">
+                                <div className="conversation-head-left">
+                                    <div className="conversation-avatar">{selectedInitials}</div>
+                                    <div>
+                                        <div className="conversation-name">{selectedTitle}</div>
+                                        <div className="conversation-status">
+                                            {typingUser && typingUser !== username ? `${selectedTitle} is typing...` : "Active now"}
+                                        </div>
+                                    </div>
                                 </div>
-                                <VoiceCallButton title="Start voice call" />
-                                <VideoCallButton title="Start video call" />
-                                <InfoButton title="Show info" onClick={handleCreateRoom}/>
-                            </ConversationHeader.Actions>
-                        </ConversationHeader>
-                        <MessageList >
-                            {messages.map((msg,index)=>(
-                            <Message
-                                key={msg._id ?? `${msg.username}-${msg.time}-${index}`}
-                                model={{
-                                message: msg.message,
-                                sentTime: msg.time,
-                                sender: msg.username,
-                                direction: msg.username === username ? "outgoing" : "incoming",
-                                position: "single"
+                                <div className="conversation-actions">
+                                    <button type="button" aria-label="Call"><Phone size={18} /></button>
+                                    <button type="button" aria-label="Video"><Video size={18} /></button>
+                                    <button type="button" aria-label="Info" onClick={handleCreateRoom}><Info size={18} /></button>
+                                </div>
+                            </header>
+
+                            <div className="message-list-modern">
+                                {messages.length === 0 ? (
+                                    <div className="empty-chat">
+                                        <MessageSquare size={42} />
+                                        <h3>No messages yet</h3>
+                                        <p>Start the conversation by sending a message.</p>
+                                    </div>
+                                ) : (
+                                    messages.map((msg, index) => (
+                                        <div
+                                            key={msg._id ?? `${msg.username}-${msg.time}-${index}`}
+                                            className={`bubble-row ${msg.username === username ? "mine" : "theirs"}`}
+                                        >
+                                            <div className={`bubble ${msg.username === username ? "bubble-mine" : "bubble-theirs"}`}>
+                                                {msg.message}
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+
+                            <form
+                                onSubmit={(e) => {
+                                    e.preventDefault();
+                                    if (!message.trim()) return;
+                                    sendMessage(message);
                                 }}
-                            />
-                            ))}
-                        </MessageList>
-                        <MessageInput
-                            value={message}
-                            onChange={(val)=>setMessage(val)}
-                            onSend={(text)=>{
-                                // chatscope sometimes passes the string directly; keep it simple
-                                sendMessage(text);
-                            }}
-                        />
-                        </ChatContainer>
-                    </MainContainer>
+                                className="composer-modern"
+                            >
+                                <div className="composer-box">
+                                    <Smile size={18} className="composer-icon" />
+                                    <input
+                                        value={message}
+                                        onChange={(e)=>setMessage(e.target.value)}
+                                        placeholder={`Message ${selectedTitle}...`}
+                                        aria-label="Type a message"
+                                    />
+                                    <button type="submit" disabled={!message.trim()} aria-label="Send">
+                                        <Send size={16} />
+                                    </button>
+                                </div>
+                            </form>
+                        </>
                     ) : (
-                    <div className="d-flex justify-content-center align-items-center h-100 text-muted bg-light">
-                        <h3 className="text-black">Select a conversation to start chatting</h3>
-                    </div>
-                    )}
-                    {modal && (<>
-                        <div className="modal-backdrop fade show"></div>
-                        <div className="modal show d-block" tabIndex={-1}>
-                            <div className="modal-dialog">
-                            <div className="modal-content">
-
-                                <div className="modal-header">
-                                <h5 className="modal-title">New message</h5>
-                                <button
-                                    className="btn-close"
-                                    onClick={() => setModal(false)}
-                                />
-                                </div>
-
-                                <div className="modal-body">
-                                <AddUser 
-                                username={username}
-                                usersList={usersList} 
-                                setAddUsers={setAddUser}
-                                addUsers={addUser}
-                                setModal={setModal}
-                                socket={socket}
-                                />
-                                </div>
-
-                                <div className="modal-footer">
-                                <button
-                                    className="btn btn-secondary"
-                                    onClick={() => setModal(false)}
-                                >
-                                    Close
-                                </button>
-                                </div>
-
-                            </div>
-                            </div>
+                        <div className="empty-chat">
+                            <MessageSquare size={42} />
+                            <h3>Select a conversation to start chatting</h3>
+                            <p>Your chats will appear on the left.</p>
                         </div>
-                    </>
                     )}
-                    {createRoomModal&&(
-                        <CreateRoomModal 
-                            setCreateRoomModal={setCreateRoomModal}
-                            selectedRoom={selectedRoom}
-                            socket={socket}
-                        />
-                    )}
-                    </main>
-                </div>
+                </section>
             </div>
+            {modal && (<>
+                <div className="modal-backdrop fade show"></div>
+                <div className="modal show d-block" tabIndex={-1}>
+                    <div className="modal-dialog">
+                    <div className="modal-content">
+                        <div className="modal-header">
+                        <h5 className="modal-title">New message</h5>
+                        <button
+                            className="btn-close"
+                            onClick={() => setModal(false)}
+                        />
+                        </div>
+
+                        <div className="modal-body">
+                        <AddUser 
+                        username={username}
+                        usersList={usersList} 
+                        setAddUsers={setAddUser}
+                        addUsers={addUser}
+                        setModal={setModal}
+                        socket={socket}
+                        />
+                        </div>
+
+                        <div className="modal-footer">
+                        <button
+                            className="btn btn-secondary"
+                            onClick={() => setModal(false)}
+                        >
+                            Close
+                        </button>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+            </>
+            )}
+            {createRoomModal&&(
+                <CreateRoomModal 
+                    setCreateRoomModal={setCreateRoomModal}
+                    selectedRoom={selectedRoom}
+                    socket={socket}
+                />
+            )}
         </div>
         </>
-    )
+    );
 }
 
 export default MessagePage;

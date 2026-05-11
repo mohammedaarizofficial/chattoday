@@ -131,16 +131,17 @@ function App() {
     if(room){
       navigate('/message');
     }
-  },[room])
+  },[room, navigate])
 
   useEffect(()=>{
     currentRoomRef.current = selectedRoom;
   },[selectedRoom]);
 
-  if(logOut){
+  useEffect(() => {
+    if (!logOut) return;
     localStorage.removeItem('token');
     navigate('/');
-  }
+  }, [logOut, navigate]);
 
   useEffect(()=>{
     bottomRef.current?.scrollIntoView({behavior:"smooth"});
@@ -219,51 +220,49 @@ function App() {
         listenersBoundRef.current = false;
       }
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   },[]);
 
 
 
-  return (<>
-      <div className="d-flex justify-content-center align-items-center min-vh-100 bg-dark">
-        <Routes>
-          <Route path="/register" element={
-            <RegisterPage 
-            availableRooms={availableRooms}
-            createSocket={createSocket}
-            />} />
-          <Route path="/" element={
-            <Loginpage 
-              username={username} 
-              setUsername={setUsername} 
-              password={password} 
-              setPassword={setPassword} 
-              joinChat={joinChat}
-              loginError={loginError}/>} 
-            />
-          <Route path="/message" element={
-            <ProtectedRoute>
-              <MessagePage 
-              selectedRoom={selectedRoom}
-              username={username} 
-              availableRooms={availableRooms} 
-              typingUser={typingUser} 
-              messages={messages} 
-              setMessage={setMessage}
-              sendMessage={sendMessage} 
-              message={message} 
-              socket={socket}
-              setLogOut={setLogOut}
-              usersList={usersList}
-              setAddUser={setAddUser}
-              addUser={addUser}
-              setSelectedRoom={setSelectedRoom}
-            />
-          </ProtectedRoute>
-          }/>
-        </Routes>
-      </div>
-      </>
-  )
+  return (
+    <Routes>
+      <Route path="/register" element={
+        <RegisterPage 
+        availableRooms={availableRooms}
+        createSocket={createSocket}
+        />} />
+      <Route path="/" element={
+        <Loginpage 
+          username={username} 
+          setUsername={setUsername} 
+          password={password} 
+          setPassword={setPassword} 
+          joinChat={joinChat}
+          loginError={loginError}/>} 
+        />
+      <Route path="/message" element={
+        <ProtectedRoute>
+          <MessagePage 
+          selectedRoom={selectedRoom}
+          username={username} 
+          availableRooms={availableRooms} 
+          typingUser={typingUser} 
+          messages={messages} 
+          setMessage={setMessage}
+          sendMessage={sendMessage} 
+          message={message} 
+          socket={socket}
+          setLogOut={setLogOut}
+          usersList={usersList}
+          setAddUser={setAddUser}
+          addUser={addUser}
+          setSelectedRoom={setSelectedRoom}
+        />
+      </ProtectedRoute>
+      }/>
+    </Routes>
+  );
 }
 
 export default App
