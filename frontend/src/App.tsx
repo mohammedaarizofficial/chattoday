@@ -247,8 +247,12 @@ function App() {
     <Routes>
       <Route path="/register" element={
         <RegisterPage 
-        availableRooms={availableRooms}
-        createSocket={createSocket}
+        username={username}
+        setUsername={setUsername}
+        password={password}
+        setPassword={setPassword}
+        joinChat={joinChat}
+        loginError={loginError}
         />} />
       <Route path="/" element={
         <Loginpage 

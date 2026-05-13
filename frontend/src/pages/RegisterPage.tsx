@@ -1,16 +1,31 @@
 import Register from "../components/Register";
 
 interface RegisterPageProps{
-    availableRooms:string[],
-    createSocket:(token:string)=>void,
+    username:string,
+    password:string,
+    setPassword:React.Dispatch<React.SetStateAction<string>>,
+    setUsername:React.Dispatch<React.SetStateAction<string>>,
+    joinChat:(e: React.FormEvent<HTMLFormElement>)=>void;
+    loginError:string;
 }
 
-function RegisterPage({availableRooms,createSocket}:RegisterPageProps){
+function RegisterPage({
+    username,
+    setUsername,
+    joinChat,
+    password,
+    setPassword,
+    loginError
+}:RegisterPageProps){
     return(
         <>
         <Register 
-        availableRooms={availableRooms}
-        createSocket={createSocket}
+        username={username}
+        setUsername={setUsername}
+        joinChat={joinChat}
+        password={password}
+        setPassword={setPassword}
+        loginError={loginError}
         />
         </>
     )
