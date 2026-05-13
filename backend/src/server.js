@@ -56,20 +56,43 @@ const getUserRooms = async (username) => {
 const app = express();
 const server = http.createServer(app);
 const PORT = process.env.PORT;
-app.use(cors());
+const allowedOrigins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://chattoday-theta.vercel.app"
+];
 
+// EXPRESS CORS
+app.use(cors({
+    origin: (origin, callback) => {
+        // allow server-to-server or Postman requests
+        if (!origin) return callback(null, true);
+
+        if (allowedOrigins.includes(origin)) {
+            return callback(null, true);
+        }
+
+        return callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true
+}));
+
+// SOCKET.IO CORS
 const io = new Server(server, {
-    cors:{
-        origin:(origin, callback)=>{
-            if(!origin) return callback(null, true);
-            if(origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:")){
+    cors: {
+        origin: (origin, callback) => {
+            if (!origin) return callback(null, true);
+
+            if (allowedOrigins.includes(origin)) {
                 return callback(null, true);
             }
+
             return callback(new Error("Not allowed by CORS"));
         },
-        methods:["GET", "POST"]
+        methods: ["GET", "POST"],
+        credentials: true
     }
-})
+});
 
 connectdb();
 

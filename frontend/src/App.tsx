@@ -122,7 +122,8 @@ function App() {
       listenersBoundRef.current = false;
     }
     const nextSocket = io(API_URL,{
-      auth:{token}
+      auth:{token},
+      transports:["websocket"]
     });
     socket.current = nextSocket;
     attachSocketListeners(nextSocket);
@@ -204,7 +205,7 @@ function App() {
     const res = await fetch(`${API_URL}/users/login`,{
       method:"POST",
       headers:{'Content-type':'application/json'},
-      body:JSON.stringify({username,password})
+      body:JSON.stringify({username,password}),
     });
 
     const data = await res.json();
