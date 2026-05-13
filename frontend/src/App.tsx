@@ -138,10 +138,27 @@ function App() {
   },[selectedRoom]);
 
   useEffect(() => {
-    if (!logOut) return;
-    localStorage.removeItem('token');
-    navigate('/');
-  }, [logOut, navigate]);
+  if (!logOut) return;
+
+  localStorage.removeItem("token");
+
+  if(socket.current){
+    socket.current.disconnect();
+    socket.current = null;
+  }
+
+  listenersBoundRef.current = false;
+
+  setUsername("");
+  setPassword("");
+  setSelectedRoom("");
+  setAvailableRooms([]);
+  setMessages([]);
+
+  navigate("/");
+
+  setLogOut(false); // IMPORTANT
+}, [logOut, navigate]);
 
   useEffect(()=>{
     bottomRef.current?.scrollIntoView({behavior:"smooth"});

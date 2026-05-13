@@ -195,43 +195,117 @@ function MessagePage({username,selectedRoom,availableRooms, setMessage,typingUse
                     )}
                 </section>
             </div>
-            {modal && (<>
-                <div className="modal-backdrop fade show"></div>
-                <div className="modal show d-block" tabIndex={-1}>
-                    <div className="modal-dialog">
-                    <div className="modal-content">
-                        <div className="modal-header">
-                        <h5 className="modal-title">New message</h5>
-                        <button
-                            className="btn-close"
-                            onClick={() => setModal(false)}
-                        />
-                        </div>
+            {modal && (
+<>
+    {/* BACKDROP */}
+    <div
+        onClick={() => setModal(false)}
+        style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.65)",
+            backdropFilter: "blur(10px)",
+            zIndex: 2000
+        }}
+    />
 
-                        <div className="modal-body">
-                        <AddUser 
-                        username={username}
-                        usersList={usersList} 
-                        setAddUsers={setAddUser}
-                        addUsers={addUser}
-                        setModal={setModal}
-                        socket={socket}
-                        />
-                        </div>
+    {/* MODAL WRAPPER */}
+    <div
+        style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 2001,
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            padding: "24px"
+        }}
+    >
+        {/* MODAL CARD */}
+        <div
+            className="auth-card"
+            onClick={(e)=>e.stopPropagation()}
+            style={{
+                width: "100%",
+                maxWidth: "560px",
+                maxHeight: "75vh",
+                overflow: "hidden",
+                display: "flex",
+                flexDirection: "column",
+                position: "relative",
+                borderRadius: "28px",
+                padding: "28px",
+                paddingBottom:0,
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                boxShadow: "var(--shadow-soft)"
+            }}
+        >
 
-                        <div className="modal-footer">
-                        <button
-                            className="btn btn-secondary"
-                            onClick={() => setModal(false)}
-                        >
-                            Close
-                        </button>
-                        </div>
-                    </div>
-                    </div>
+            {/* HEADER */}
+            <div
+                className="d-flex justify-content-between align-items-start"
+                style={{
+                    flexShrink: 0,
+                    marginBottom: "18px"
+                }}
+            >
+                <div>
+                    <h2
+                        className="auth-title"
+                        style={{
+                            fontSize: "1.5rem",
+                            marginBottom: "6px"
+                        }}
+                    >
+                        Create Group
+                    </h2>
+
+                    <p className="auth-subtitle mb-0">
+                        Select people to start chatting.
+                    </p>
                 </div>
-            </>
-            )}
+
+                <button
+                    onClick={() => setModal(false)}
+                    style={{
+                        width: "38px",
+                        height: "38px",
+                        borderRadius: "50%",
+                        border: "1px solid var(--border)",
+                        background: "var(--surface-elevated)",
+                        color: "var(--foreground)",
+                        cursor: "pointer",
+                        fontSize: "1rem",
+                        flexShrink: 0
+                    }}
+                >
+                    ✕
+                </button>
+            </div>
+
+            {/* BODY */}
+            <div
+                style={{
+                    flex: 1,
+                    overflow: "hidden",
+                    display: "flex",
+                    flexDirection: "column"
+                }}
+            >
+                <AddUser 
+                    username={username}
+                    usersList={usersList} 
+                    setAddUsers={setAddUser}
+                    addUsers={addUser}
+                    setModal={setModal}
+                    socket={socket}
+                />
+            </div>
+        </div>
+    </div>
+</>
+)}
             {createRoomModal&&(
                 <CreateRoomModal 
                     setCreateRoomModal={setCreateRoomModal}

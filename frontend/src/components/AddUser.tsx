@@ -12,78 +12,206 @@ interface AddUserProps{
     socket:RefObject<Socket<DefaultEventsMap, DefaultEventsMap> | null>,
 }
 
-function AddUser({username,usersList, addUsers, setAddUsers, setModal, socket}:AddUserProps){
+function AddUser({
+    username,
+    usersList,
+    addUsers,
+    setAddUsers,
+    setModal,
+    socket
+}:AddUserProps){
 
     const handleToggleUser = (user:string)=>{
         setAddUsers(prev=>{
             if(prev.includes(user)){
-                // remove user
                 return prev.filter(u => u !== user);
-            } else {
-                // add user
-                return [...prev, user];
             }
+
+            return [...prev, user];
         });
     };
 
-    const handleSubmit=(e:React.FormEvent<HTMLFormElement>)=>{
+    const handleSubmit = (e:React.FormEvent<HTMLFormElement>)=>{
         e.preventDefault();
 
         if(addUsers.length === 0 || !socket.current){
             return;
         }
 
-        console.log("Selected Users:", addUsers);
-
         socket.current.emit("startGroupChat",{
             users:addUsers
         });
 
         setModal(false);
-        setAddUsers([]); // reset after submit
+        setAddUsers([]);
     };
 
     return(
-        <div className='d-flex justify-content-center align-items-center w-100'>
-            <form onSubmit={handleSubmit} className="w-100 border border-secondary-subtle rounded-2 p-3">
+        <div 
+    className="p-0 bg-transparent"
+    style={{
+        width:"100%",
+        height:"100%",
+        overflow:"hidden",
+        display:"flex",
+        flexDirection:"column"
+    }}
+>
+            <form
+                onSubmit={handleSubmit}
+                style={{
+                    width:"100%",
+                    maxWidth:"100%",
+                    padding:"24px"
+                }}
+            >
 
-                <h1 className="h5 mb-3 text-center">Create Group</h1>
+                <div
+                    className="
+                    rounded-xl
+                    p-4
+                    mb-4
+                    "
+                    style={{
+                        maxHeight:"280px",
+                        overflowY:"auto",
+                        gap:"10px",
+                        borderWidth:"1px",
+                        borderStyle:"solid",
+                        borderColor:"var(--border)"
+                    }}
+                >
+                    {usersList
+                        .filter(user => user !== username)
+                        .map((user,index)=>{
 
-                <div className="dropdown">
-                    <button 
-                        className="btn btn-secondary dropdown-toggle mb-2 w-100" 
-                        type="button" 
-                        data-bs-toggle="dropdown"
-                    >
-                        {addUsers.length > 0 
-                          ? `${addUsers.length} selected` 
-                          : 'Select Users'}
-                    </button>
+                        const selected = addUsers.includes(user);
 
-                    <ul className="dropdown-menu w-100">
-                        {usersList.filter(u=>u!==username).map((user,index)=>(
-                            <li key={index} className="px-3 py-1">
+                        return(
+                            <label
+                                key={index}
+                                htmlFor={user}
+                                className="d-flex align-items-center justify-content-between mb-2"
+                                style={{
+                                    padding:"10px 14px",
+                                    border:"1px solid var(--border)",
+                                    borderRadius:"14px",
+                                    background:selected
+                                        ? "color-mix(in oklab, var(--primary) 18%, var(--surface-elevated))"
+                                        : "var(--surface-elevated)",
+                                    cursor:"pointer",
+                                    transition:"0.2s ease"
+                                }}
+                            >
+                                <div className="d-flex align-items-center gap-3">
+
+                                    <div
+                                        style={{
+                                            width:"40px",
+                                            height:"40px",
+                                            borderRadius:"50%",
+                                            display:"grid",
+                                            placeItems:"center",
+                                            fontWeight:"700",
+                                            fontSize:"0.85rem",
+                                            background:"var(--gradient-brand)",
+                                            color:"#1b1b1b",
+                                            textTransform:"uppercase"
+                                        }}
+                                    >
+                                        {user.charAt(0)}
+                                    </div>
+
+                                    <div>
+                                        <div
+                                            style={{
+                                                fontWeight:"600",
+                                                color:"var(--foreground)"
+                                            }}
+                                        >
+                                            {user}
+                                        </div>
+
+                                        <div
+                                            style={{
+                                                fontSize:"0.78rem",
+                                                color:"var(--muted-foreground)"
+                                            }}
+                                        >
+                                            @{user.toLowerCase()}
+                                        </div>
+                                    </div>
+                                </div>
 
                                 <input
                                     type="checkbox"
                                     id={user}
-                                    checked={addUsers.includes(user)}
+                                    checked={selected}
                                     onChange={()=>handleToggleUser(user)}
+                                    style={{
+                                        width:"18px",
+                                        height:"18px",
+                                        accentColor:"#f4a524",
+                                        cursor:"pointer"
+                                    }}
                                 />
-
-                                <label htmlFor={user} className="ms-2">
-                                    {user}
-                                </label>
-
-                            </li>
-                        ))}
-                    </ul>
+                            </label>
+                        );
+                    })}
                 </div>
 
-                <Button type="submit" variant="contained" fullWidth>
-                    {addUsers.length>0?"Create Group":"Add User"}
-                </Button>
+                {addUsers.length > 0 && (
+                    <div
+                        style={{
+                            marginTop:"14px",
+                            marginBottom:"14px",
+                            display:"flex",
+                            flexWrap:"wrap",
+                            gap:"8px"
+                        }}
+                    >
+                        {addUsers.map((user,index)=>(
+                            <div
+                                key={index}
+                                style={{
+                                    padding:"6px 12px",
+                                    borderRadius:"999px",
+                                    background:"color-mix(in oklab, var(--primary) 18%, var(--surface))",
+                                    border:"1px solid var(--border)",
+                                    fontSize:"0.82rem"
+                                }}
+                            >
+                                {user}
+                            </div>
+                        ))}
+                    </div>
+                )}
 
+                <button
+                    type="submit"
+                    className="auth-submit"
+                    disabled={addUsers.length === 0}
+                    style={{
+                        opacity:addUsers.length === 0 ? 0.5 : 1,
+                        cursor:addUsers.length === 0 ? "not-allowed" : "pointer"
+                    }}
+                >
+                    {addUsers.length > 0
+                        ? `Create Group (${addUsers.length})`
+                        : "Select Users"}
+                </button>
+
+                <Button
+                    type="button"
+                    onClick={()=>setModal(false)}
+                    fullWidth
+                    sx={{
+                        marginTop:"12px",
+                        color:"var(--muted-foreground)"
+                    }}
+                >
+                    Cancel
+                </Button>
             </form>
         </div>
     );
