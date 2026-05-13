@@ -5,14 +5,14 @@ interface LoginProps{
     password:string,
     setPassword:React.Dispatch<React.SetStateAction<string>>,
     setUsername:React.Dispatch<React.SetStateAction<string>>,
-    joinChat:(e: React.FormEvent<HTMLFormElement>)=>void;
+    registerUser:(e: React.FormEvent<HTMLFormElement>)=>void;
     loginError:string;
 }
 
 function Login({
     username,
     setUsername,
-    joinChat,
+    registerUser,
     password,
     setPassword,
     loginError
@@ -60,7 +60,7 @@ function Login({
 
                 {/* Card */}
                 <form
-                    onSubmit={joinChat}
+                    onSubmit={registerUser}
                     style={{width:"100%"}}
                     className="
                         auth-card

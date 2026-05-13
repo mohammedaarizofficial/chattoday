@@ -225,6 +225,44 @@ function App() {
     navigate("/message");
   };
 
+  const registerUser = async (e:React.FormEvent<HTMLFormElement>)=>{
+    e.preventDefault();
+
+    setLoginError("");
+
+    try{
+      const res = await fetch(`${API_URL}/users`,{
+        method:"POST",
+        headers:{
+          "Content-Type":"application/json"
+        },
+        body:JSON.stringify({
+          username,
+          password
+        })
+      });
+
+      const data = await res.json();
+
+      if(!res.ok){
+        setLoginError(data?.message || "Unable to register");
+        return;
+      }
+
+      localStorage.setItem("token", data.token);
+
+      setUsername(data.username);
+
+      createSocket(data.token);
+
+      navigate("/message");
+
+    }catch(err){
+      console.log(err);
+      setLoginError("Something went wrong");
+    }
+  }
+
   useEffect(()=>{
     const token = localStorage.getItem("token");
 
@@ -252,7 +290,7 @@ function App() {
         setUsername={setUsername}
         password={password}
         setPassword={setPassword}
-        joinChat={joinChat}
+        registerUser={registerUser}
         loginError={loginError}
         />} />
       <Route path="/" element={

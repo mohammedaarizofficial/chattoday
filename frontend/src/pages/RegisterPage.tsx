@@ -5,14 +5,14 @@ interface RegisterPageProps{
     password:string,
     setPassword:React.Dispatch<React.SetStateAction<string>>,
     setUsername:React.Dispatch<React.SetStateAction<string>>,
-    joinChat:(e: React.FormEvent<HTMLFormElement>)=>void;
+    registerUser:(e: React.FormEvent<HTMLFormElement>)=>void;
     loginError:string;
 }
 
 function RegisterPage({
     username,
     setUsername,
-    joinChat,
+    registerUser,
     password,
     setPassword,
     loginError
@@ -22,7 +22,7 @@ function RegisterPage({
         <Register 
         username={username}
         setUsername={setUsername}
-        joinChat={joinChat}
+        registerUser={registerUser}
         password={password}
         setPassword={setPassword}
         loginError={loginError}
