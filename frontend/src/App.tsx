@@ -32,6 +32,7 @@ function App() {
   const [addUser, setAddUser]=useState<string[]>([]);
   const [selectedRoom, setSelectedRoom] = useState<string>('');
   const [loginError, setLoginError] = useState<string>("");
+  const API_URL = import.meta.env.VITE_API_URL;
 
   const socket = useRef<Socket | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
@@ -120,7 +121,7 @@ function App() {
       socket.current = null;
       listenersBoundRef.current = false;
     }
-    const nextSocket = io("http://localhost:5432",{
+    const nextSocket = io(API_URL,{
       auth:{token}
     });
     socket.current = nextSocket;
@@ -200,7 +201,7 @@ function App() {
     e.preventDefault();
     setLoginError("");
 
-    const res = await fetch("http://localhost:5432/users/login",{
+    const res = await fetch(`${API_URL}/users/login`,{
       method:"POST",
       headers:{'Content-type':'application/json'},
       body:JSON.stringify({username,password})
